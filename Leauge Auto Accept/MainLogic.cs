@@ -66,7 +66,10 @@ namespace Leauge_Auto_Accept
                                 handleMatchmakingAccept();
                                 break;
                             case "ChampSelect":
-                                handleChampSelect();
+                                var gameMode = gameSessionResp.Data.GameData.Queue.GameMode;
+                                //Console.WriteLine(gameMode);
+                                //Console.ReadLine();
+                                handleChampSelect(gameMode);
                                 handlePickOrderSwap();
                                 break;
                             case "InProgress":
@@ -90,7 +93,7 @@ namespace Leauge_Auto_Accept
                                 Thread.Sleep(5000);
                                 break;
                             default:
-                                //Debug.WriteLine(phase);
+                                // Debug.WriteLine(phase);
                                 // TODO: add more special cases?
                                 Thread.Sleep(1000);
                                 break;
@@ -164,7 +167,7 @@ namespace Leauge_Auto_Accept
         }
 
 
-        private static void handleChampSelect()
+        private static void handleChampSelect(string gameMode)
         {
             // Get data for the current ongoing champ select
             var currentChampSelect = LCU.clientRequest<LCUTypes.LolChampSelectSessionV1>("GET", "lol-champ-select/v1/session");
@@ -216,14 +219,6 @@ namespace Leauge_Auto_Accept
                         pickedBan = true;
                         lockedBan = true;
                     }
-                    if (Settings.currentSpell1[1] == "0")
-                    {
-                        pickedSpell1 = true;
-                    }
-                    if (Settings.currentSpell2[1] == "0")
-                    {
-                        pickedSpell2 = true;
-                    }
                     if (!Settings.chatMessagesEnabled)
                     {
                         sentChatMessages = true;
@@ -269,6 +264,38 @@ namespace Leauge_Auto_Accept
                     if (!sentChatMessages)
                     {
                         handleChampSelectChat(currentChatRoom);
+                    }
+
+                    // Handle Summoner Spell selection
+                    if (Settings.currentSpell1[1] == "0")
+                    {
+                        pickedSpell1 = true;
+                    }
+                    else
+                    {
+                        var spell = Data.spellsSorted
+                            .First(s => s.id == Settings.currentSpell1[1]);
+
+                        if (!spell.gameModes.Contains(gameMode))
+                        {
+                            pickedSpell1 = true;
+                            Log.Debug("Spell 1 no available for current gamemode, skipping");
+                        }
+                    }
+                    if (Settings.currentSpell2[1] == "0")
+                    {
+                        pickedSpell2 = true;
+                    }
+                    else
+                    {
+                        var spell = Data.spellsSorted
+                            .First(s => s.id == Settings.currentSpell2[1]);
+
+                        if (!spell.gameModes.Contains(gameMode))
+                        {
+                            pickedSpell2 = true;
+                            Log.Debug("Spell 2 no available for current gamemode, skipping");
+                        }
                     }
                     if (!pickedSpell1)
                     {

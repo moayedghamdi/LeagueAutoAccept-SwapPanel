@@ -14,13 +14,20 @@ namespace Leauge_Auto_Accept
         public bool free { get; set; }
     }
 
+    public class spellList
+    {
+        public string name { get; set; }
+        public string id { get; set; }
+        public List<string> gameModes { get; set; } = new();
+    }
+
     internal class Data
     {
         private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
 
         public static List<itemList> champsSorted = new List<itemList>();
         public static List<itemList> runesList = new List<itemList>();
-        public static List<itemList> spellsSorted = new List<itemList>();
+        public static List<spellList> spellsSorted = new List<spellList>();
 
         public static long currentSummonerId = 0;
         public static string currentChatId = "";
@@ -108,54 +115,50 @@ namespace Leauge_Auto_Accept
             Log.Debug("spellsSorted.Count={0}", spellsSorted?.Count);
             if (!spellsSorted.Any())
             {
-                loadSummonerId();
-
-                Log.Info("Loading available summoner spells from service.");
-
                 Print.printCentered("Getting a list of available summoner spells...", 15);
-                var availableSpellsResp = LCU.clientRequestUntilSuccess<LCUTypes.LolCollectionsInventoriesSpellsV1>("GET", $"lol-collections/v1/inventories/{currentSummonerId}/spells");
-                Console.Clear();
-                var availableSpells = new List<ulong>(availableSpellsResp.Data.Spells);
-
-                Print.printCentered("Getting a list of available gamemodes...", 15);
-                var platformConfigResp = LCU.clientRequestUntilSuccess("GET", "lol-platform-config/v1/namespaces");
-
-                //couldnt use generic because the (de)serializer in restsharp was failing on key ESports and Esports being a duplicate
-                //this uses a case-sensitive deserializer
-                var platformConfig = JsonNode.Parse(platformConfigResp.Content); 
-
-                Console.Clear();
-                var enabledGameModes = platformConfig["Mutators"]["EnabledModes"].AsArray().GetValues<string>();
-
-                Console.Clear();
-                foreach (var gameMode in enabledGameModes)
-                {
-                    foreach (var spellInactive in platformConfig["ClientSystemStates"]["gameModeToInactiveSpellIds"][gameMode].AsArray())
-                    {
-                        availableSpells.Remove((ulong)spellInactive.GetValue<float>());
-                    }
-                }
-
-                // Remove dupes
-                availableSpells = availableSpells.Distinct().ToList();
-
-                // Get sepll names
-                Print.printCentered("Getting summoner spell names...", 15);
                 var spellsResp = LCU.clientRequest<JsonArray>("GET", "lol-game-data/assets/v1/summoner-spells.json");
                 Console.Clear();
 
-                var spellsSorted2 = new List<itemList>(20);
-                // Add to list with names
-                foreach (var availableSpellId in availableSpells)
+                // Add to list with names and available gamemodes
+                var spellsTmp = new List<spellList>(20);
+                foreach (var spell in spellsResp.Data)
                 {
-                    var spellInfo = spellsResp.Data.FirstOrDefault(x => (ulong)x["id"] == availableSpellId);
+                    if (spell == null)
+                        continue;
 
-                    if (spellInfo != null)
-                        spellsSorted2.Add(new itemList() { name = (string)spellInfo["name"], id = spellInfo["id"].ToString() });
+                    var gameModes = spell["gameModes"]?.Deserialize<List<string>>() ?? new List<string>();
+
+                    // Skip if array is spell has no available gamemodes
+                    if (gameModes.Count == 0)
+                        continue;
+
+                    spellsTmp.Add(new spellList()
+                    {
+                        name = (string)spell["name"],
+                        id = spell["id"].ToString(),
+                        gameModes = gameModes
+                    });
                 }
 
-                // Sort alphabetically
-                spellsSorted = spellsSorted2.OrderBy(o => o.name).ToList();
+                // Remove spells from the list for gamemodes where the user has no choice
+                foreach (var spell in spellsTmp.ToList())
+                {
+                    foreach (var mode in spell.gameModes.ToList())
+                    {
+                        int count = 0;
+
+                        foreach (var otherSpell in spellsTmp)
+                        {
+                            if (otherSpell.gameModes.Contains(mode))
+                                count++;
+                        }
+                        if (count <= 2)
+                            spell.gameModes.Remove(mode);
+                    }
+                    if (spell.gameModes.Count == 0)
+                        spellsTmp.Remove(spell);
+                }
+                spellsSorted = spellsTmp;
             }
         }
     }
