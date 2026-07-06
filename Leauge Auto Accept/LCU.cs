@@ -9,7 +9,6 @@ using System.Threading;
 using System.Text.Json;
 using RestSharp;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
 
 namespace Leauge_Auto_Accept
 {
@@ -20,6 +19,8 @@ namespace Leauge_Auto_Accept
 
         private static string[] leagueAuth;
         private static int lcuPid = 0;
+        private const int RequestTimeoutMilliseconds = 5000;
+        private const int MaxRetryAttempts = 5;
         public static bool isLeagueOpen = false;
 
         public static void CheckIfLeagueClientIsOpenTask()
@@ -36,6 +37,15 @@ namespace Leauge_Auto_Accept
 
                         //get token and port
                         leagueAuth = getLeagueAuth(client);
+                        if (leagueAuth == null)
+                        {
+                            isLeagueOpen = false;
+                            MainLogic.isAutoAcceptOn = false;
+                            Log.Warn("League client was found, but LCU auth data could not be read.");
+                            UI.leagueClientIsClosedMessage();
+                            Thread.Sleep(2000);
+                            continue;
+                        }
 
                         //reset restclient
                         S_restClient?.Dispose(); S_restClient = null;
@@ -43,8 +53,15 @@ namespace Leauge_Auto_Accept
                         // Check if preload data was enabled last time
                         if (Settings.preloadData)
                         {
-                            Data.loadChampionsList();
-                            Data.loadSpellsList();
+                            bool championsLoaded = Data.loadChampionsList();
+                            bool spellsLoaded = Data.loadSpellsList();
+                            if (!championsLoaded || !spellsLoaded)
+                            {
+                                Console.Clear();
+                                Print.printCentered("Some League data failed to load.", SizeHandler.HeightCenter - 1);
+                                Print.printCentered("The app will keep running; try opening the selector again.");
+                                Thread.Sleep(2500);
+                            }
                         }
                         if (Settings.shouldAutoAcceptbeOn)
                         {
@@ -102,8 +119,16 @@ namespace Leauge_Auto_Accept
             }
 
             // Parse the port and auth token into variables
-            string port = Regex.Match(commandLine, @"--app-port=""?(\d+)""?").Groups[1].Value;
-            string authToken = Regex.Match(commandLine, @"--remoting-auth-token=([a-zA-Z0-9_-]+)").Groups[1].Value;
+            var portMatch = Regex.Match(commandLine ?? "", @"--app-port=""?(\d+)""?");
+            var authTokenMatch = Regex.Match(commandLine ?? "", @"--remoting-auth-token=([a-zA-Z0-9_-]+)");
+            if (!portMatch.Success || !authTokenMatch.Success)
+            {
+                Log.Warn("Failed to parse LCU auth data. portFound={0} tokenFound={1}", portMatch.Success, authTokenMatch.Success);
+                return null;
+            }
+
+            string port = portMatch.Groups[1].Value;
+            string authToken = authTokenMatch.Groups[1].Value;
 
             // Compute the encoded key
             string auth = "riot:" + authToken;
@@ -143,29 +168,35 @@ namespace Leauge_Auto_Accept
         }
 
         public static RestResponse clientRequest(RestRequest req)
-        { 
-            if (S_restClient == null)
+        {
+            if (!EnsureClient())
             {
-                S_restClient = new RestClient(c => {
-                    c.BaseUrl = new Uri("https://127.0.0.1:" + leagueAuth[1] + "/");
-                    //c.Authenticator = new HttpBasicAuthenticator(leagueAuth[0], "");
-
-                    //disable ssl checks
-                    c.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicy) => true;
-
-                }, h => {
-                    h.Authorization = new AuthenticationHeaderValue("Basic", leagueAuth[0]);
-                });
+                return new RestResponse(req);
             }
 
             Log.Debug("Initiating request {0} {1}", req.Method, req.Resource);
 
             //execute request
-            RestResponse restResp = S_restClient.Execute(req);
+            RestResponse restResp;
+            try
+            {
+                req.Timeout = TimeSpan.FromMilliseconds(RequestTimeoutMilliseconds);
+                restResp = S_restClient.Execute(req);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "LCU request failed before response: {0} {1}", req.Method, req.Resource);
+                return new RestResponse(req)
+                {
+                    ErrorException = ex,
+                    ErrorMessage = ex.Message,
+                    ResponseStatus = ResponseStatus.Error
+                };
+            }
 
             if (Log.IsDebugEnabled)
             {
-                 Log.Debug("statusCode={0}, isSuccessful={1}", restResp?.StatusCode, restResp?.IsSuccessful);
+                 Log.Debug("statusCode={0}, responseStatus={1}, isSuccessful={2}", restResp?.StatusCode, restResp?.ResponseStatus, restResp?.IsSuccessful);
             }
 
             WriteToJsonLog(req, restResp);
@@ -178,6 +209,7 @@ namespace Leauge_Auto_Accept
         public static RestResponse clientRequestUntilSuccess(string method, string url, string body = null)
         {
             RestResponse request;
+            int attempts = 0;
             do
             {
                 request = clientRequest(method, url, body);
@@ -187,16 +219,19 @@ namespace Leauge_Auto_Accept
                 }
                 else
                 {
-                    if (CheckIfLeagueClientIsOpen())
+                    attempts++;
+                    if (attempts < MaxRetryAttempts && CheckIfLeagueClientIsOpen())
                     {
                         Thread.Sleep(1000);
                     }
                     else
                     {
+                        Log.Warn("LCU request did not succeed after {0} attempts: {1} {2} statusCode={3} responseStatus={4}",
+                            attempts, method, url, request?.StatusCode, request?.ResponseStatus);
                         return request;
                     }
                 }
-            } while (request.IsSuccessStatusCode == false);
+            } while (request.IsSuccessStatusCode == false && attempts < MaxRetryAttempts);
 
             return request;
         }
@@ -229,33 +264,38 @@ namespace Leauge_Auto_Accept
         }
 
         public static RestResponse<TResponse> clientRequest<TResponse>(RestRequest req)
-        { 
-            if (S_restClient == null)
+        {
+            if (!EnsureClient())
             {
-                S_restClient = new RestClient(c => {
-                    c.BaseUrl = new Uri("https://127.0.0.1:" + leagueAuth[1] + "/");
-                    //c.Authenticator = new HttpBasicAuthenticator(leagueAuth[0], "");
-
-                    //disable ssl checks
-                    c.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicy) => true;
-
-                }, h => {
-                    h.Authorization = new AuthenticationHeaderValue("Basic", leagueAuth[0]);
-                });
+                return new RestResponse<TResponse>(req);
             }
 
             Log.Debug("Initiating request {0} {1}", req.Method, req.Resource);
 
+            RestResponse<TResponse> restResp;
+            try
+            {
+                req.Timeout = TimeSpan.FromMilliseconds(RequestTimeoutMilliseconds);
+                restResp = S_restClient.Execute<TResponse>(req);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "LCU request failed before response: {0} {1}", req.Method, req.Resource);
+                return new RestResponse<TResponse>(req)
+                {
+                    ErrorException = ex,
+                    ErrorMessage = ex.Message,
+                    ResponseStatus = ResponseStatus.Error
+                };
+            }
 
-            var restResp = S_restClient.Execute<TResponse>(req);
-            
 
             if (Log.IsDebugEnabled)
             {
-                Log.Debug("statusCode={0}, isSuccessful={1}", restResp.StatusCode, restResp.IsSuccessful);
+                Log.Debug("statusCode={0}, responseStatus={1}, isSuccessful={2}", restResp.StatusCode, restResp.ResponseStatus, restResp.IsSuccessful);
                 if (restResp.IsSuccessful==false)
                 {
-                    Log.Debug("statusDescription={0}, content=\n{1}", restResp.StatusDescription, restResp.Content);
+                    Log.Debug("statusDescription={0}, errorMessage={1}", restResp.StatusDescription, restResp.ErrorMessage);
                 }
             }
 
@@ -267,27 +307,57 @@ namespace Leauge_Auto_Accept
         public static RestResponse<TResponse> clientRequestUntilSuccess<TResponse>(string method, string url, string body = null)
         {
             RestResponse<TResponse> request;
+            int attempts = 0;
             do
             {
                 request = clientRequest<TResponse>(method, url, body);
-                if (request.IsSuccessStatusCode == true)
+                if (request.IsSuccessStatusCode == true && request.Data != null)
                 {
                     return request;
                 }
                 else
                 {
-                    if (CheckIfLeagueClientIsOpen())
+                    attempts++;
+                    if (attempts < MaxRetryAttempts && CheckIfLeagueClientIsOpen())
                     {
                         Thread.Sleep(1000);
                     }
                     else
                     {
+                        Log.Warn("LCU typed request did not succeed after {0} attempts: {1} {2} statusCode={3} responseStatus={4} hasData={5}",
+                            attempts, method, url, request?.StatusCode, request?.ResponseStatus, request != null && request.Data != null);
                         return request;
                     }
                 }
-            } while (request.IsSuccessStatusCode == false);
+            } while ((!request.IsSuccessStatusCode || request.Data == null) && attempts < MaxRetryAttempts);
 
             return request;
+        }
+
+        private static bool EnsureClient()
+        {
+            if (S_restClient != null)
+            {
+                return true;
+            }
+
+            if (leagueAuth == null || leagueAuth.Length < 2 || string.IsNullOrWhiteSpace(leagueAuth[0]) || string.IsNullOrWhiteSpace(leagueAuth[1]))
+            {
+                Log.Warn("LCU client cannot be created because auth data is missing.");
+                return false;
+            }
+
+            S_restClient = new RestClient(c => {
+                c.BaseUrl = new Uri("https://127.0.0.1:" + leagueAuth[1] + "/");
+
+                //disable ssl checks for the local self-signed LCU certificate
+                c.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicy) => true;
+
+            }, h => {
+                h.Authorization = new AuthenticationHeaderValue("Basic", leagueAuth[0]);
+            });
+
+            return true;
         }
 
         private static void WriteToJsonLog(RestRequest request, RestResponse restResp)

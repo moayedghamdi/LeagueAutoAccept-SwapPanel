@@ -35,14 +35,14 @@ namespace Leauge_Auto_Accept
             Console.Clear();
             Print.printCentered("Checking for an update...", SizeHandler.HeightCenter);
             var releaseResp = webRequest("https://api.github.com/repos/sweetriverfish/LeagueAutoAccept/releases/latest");
-            if (releaseResp.IsSuccessStatusCode == false)
+            if (releaseResp == null || releaseResp.IsSuccessStatusCode == false)
             {
                 // Network error
                 Console.Clear();
                 Print.printCentered("Failed to check for an update.", SizeHandler.HeightCenter - 1);
                 Print.printCentered("You can disable this check in the settings.");
-                Print.printCentered("App will launch in 5 seconds.");
-                Thread.Sleep(5000);
+                Print.printCentered("App will launch shortly.");
+                Thread.Sleep(1500);
             }
             else
             {
@@ -99,13 +99,18 @@ namespace Leauge_Auto_Accept
                 }))
                 {
 
+                    var request = new RestRequest(url)
+                    {
+                        Timeout = TimeSpan.FromMilliseconds(5000)
+                    };
+
                     // Get the response
-                    resp = client.ExecuteGet(new RestRequest(url));
+                    resp = client.ExecuteGet(request);
                     resp.ThrowIfError();
                     return resp;
                 }
             }
-            catch(Exception ex)
+            catch
             {
                 return resp;
             }

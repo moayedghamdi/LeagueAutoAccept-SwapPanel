@@ -658,7 +658,12 @@ namespace Leauge_Auto_Accept
 
             Console.Clear();
 
-            Data.loadChampionsList();
+            if (!Data.loadChampionsList())
+            {
+                Print.printCentered("Failed to load champions from League.", SizeHandler.HeightCenter - 1);
+                Print.printCentered("Press Escape to return.");
+                return;
+            }
 
             displayChamps();
             updateCurrentFilter();
@@ -752,7 +757,12 @@ namespace Leauge_Auto_Accept
 
             Console.Clear();
 
-            Data.loadRunesList();
+            if (!Data.loadRunesList())
+            {
+                Print.printCentered("Failed to load rune pages from League.", SizeHandler.HeightCenter - 1);
+                Print.printCentered("Press Escape to return.");
+                return;
+            }
 
             displayRunes();
             updateCurrentFilter();
@@ -835,7 +845,12 @@ namespace Leauge_Auto_Accept
 
             Console.Clear();
 
-            Data.loadSpellsList();
+            if (!Data.loadSpellsList())
+            {
+                Print.printCentered("Failed to load summoner spells from League.", SizeHandler.HeightCenter - 1);
+                Print.printCentered("Press Escape to return.");
+                return;
+            }
 
             displaySpells();
             updateCurrentFilter();
