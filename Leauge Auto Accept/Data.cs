@@ -32,7 +32,7 @@ namespace Leauge_Auto_Accept
         public static long currentSummonerId = 0;
         public static string currentChatId = "";
 
-        public static void loadSummonerId()
+        public static bool loadSummonerId()
         {
             Log.Debug("currentSummonerId={0}", currentSummonerId);
             if (currentSummonerId == 0)
@@ -41,18 +41,30 @@ namespace Leauge_Auto_Accept
                 Print.printCentered("Getting summoner ID...", 15);
                 var currentSummoner = LCU.clientRequestUntilSuccess<LCUTypes.LolSummonerV1CurrentSummoner>("GET", "lol-summoner/v1/current-summoner");
                 Console.Clear();
+                if (!currentSummoner.IsSuccessStatusCode || currentSummoner.Data == null)
+                {
+                    Log.Warn("Failed to load summoner id. statusCode={0} responseStatus={1}", currentSummoner.StatusCode, currentSummoner.ResponseStatus);
+                    return false;
+                }
                 currentSummonerId = currentSummoner.Data.SummonerId;
             }
+            return true;
         }
 
-        public static void loadPlayerChatId()
+        public static bool loadPlayerChatId()
         {
             var chatProfileResp = LCU.clientRequest<LCUTypes.LolChatMeV1>("GET", "lol-chat/v1/me");
+            if (!chatProfileResp.IsSuccessStatusCode || chatProfileResp.Data == null)
+            {
+                Log.Warn("Failed to load player chat id. statusCode={0} responseStatus={1}", chatProfileResp.StatusCode, chatProfileResp.ResponseStatus);
+                return false;
+            }
             currentChatId = chatProfileResp.Data.Id;
             currentSummonerId = chatProfileResp.Data.SummonerId;
+            return true;
         }
 
-        public static void loadChampionsList()
+        public static bool loadChampionsList()
         {
             Console.Clear();
 
@@ -60,13 +72,22 @@ namespace Leauge_Auto_Accept
             if (!champsSorted.Any())
             {
                 Log.Info("Loading available champions list from service");
-                loadSummonerId();
+                if (!loadSummonerId())
+                {
+                    Console.Clear();
+                    return false;
+                }
 
                 List<itemList> champs = new List<itemList>();
 
                 Print.printCentered("Getting champions and ownership list...", 15);
                 var ownedChampsResp = LCU.clientRequestUntilSuccess<LCUTypes.LolChampionsInventoriesChampionsMinimalV1[]>("GET", $"lol-champions/v1/inventories/{currentSummonerId}/champions-minimal");
                 Console.Clear();
+                if (!ownedChampsResp.IsSuccessStatusCode || ownedChampsResp.Data == null)
+                {
+                    Log.Warn("Failed to load champions list. statusCode={0} responseStatus={1}", ownedChampsResp.StatusCode, ownedChampsResp.ResponseStatus);
+                    return false;
+                }
 
                 champs = ownedChampsResp.Data
                     .Where(x => x.Name != "None")
@@ -82,22 +103,32 @@ namespace Leauge_Auto_Accept
 
             SizeHandler.resizeBasedOnChampsCount();
             Console.Clear();
+            return true;
         }
 
-        public static void loadRunesList()
+        public static bool loadRunesList()
         {
             Console.Clear();
 
             Log.Debug("runesList.Count={0}", runesList?.Count);
             if (!runesList.Any())
             {
-                loadSummonerId();
+                if (!loadSummonerId())
+                {
+                    Console.Clear();
+                    return false;
+                }
 
                 List<itemList> list = new List<itemList>();
 
                 Print.printCentered("Getting runes list...", 15);
                 var runesResp = LCU.clientRequestUntilSuccess<LCUTypes.LolPerksPagesV1[]>("GET", "lol-perks/v1/pages");
                 Console.Clear();
+                if (!runesResp.IsSuccessStatusCode || runesResp.Data == null)
+                {
+                    Log.Warn("Failed to load runes list. statusCode={0} responseStatus={1}", runesResp.StatusCode, runesResp.ResponseStatus);
+                    return false;
+                }
 
                 runesList = runesResp.Data
                     .Where(x => x.IsValid == true)
@@ -106,9 +137,10 @@ namespace Leauge_Auto_Accept
             }
 
             Console.Clear();
+            return true;
         }
 
-        public static void loadSpellsList()
+        public static bool loadSpellsList()
         {
             Console.Clear();
 
@@ -118,6 +150,11 @@ namespace Leauge_Auto_Accept
                 Print.printCentered("Getting a list of available summoner spells...", 15);
                 var spellsResp = LCU.clientRequest<JsonArray>("GET", "lol-game-data/assets/v1/summoner-spells.json");
                 Console.Clear();
+                if (!spellsResp.IsSuccessStatusCode || spellsResp.Data == null)
+                {
+                    Log.Warn("Failed to load spells list. statusCode={0} responseStatus={1}", spellsResp.StatusCode, spellsResp.ResponseStatus);
+                    return false;
+                }
 
                 // Add to list with names and available gamemodes
                 var spellsTmp = new List<spellList>(20);
@@ -160,6 +197,7 @@ namespace Leauge_Auto_Accept
                 }
                 spellsSorted = spellsTmp;
             }
+            return true;
         }
     }
 }

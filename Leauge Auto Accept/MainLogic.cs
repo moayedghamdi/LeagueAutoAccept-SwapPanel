@@ -2,6 +2,8 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 
 namespace Leauge_Auto_Accept
@@ -42,7 +44,7 @@ namespace Leauge_Auto_Accept
                 {
                     var gameSessionResp = LCU.clientRequest<LCUTypes.LolGameflowSessionV1>("GET", "lol-gameflow/v1/session");
 
-                    if (gameSessionResp.IsSuccessful)
+                    if (gameSessionResp.IsSuccessful && gameSessionResp.Data != null)
                     {
                         var gameSession = gameSessionResp.Data;
 
@@ -66,7 +68,7 @@ namespace Leauge_Auto_Accept
                                 handleMatchmakingAccept();
                                 break;
                             case "ChampSelect":
-                                var gameMode = gameSessionResp.Data.GameData.Queue.GameMode;
+                                var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
                                 //Console.WriteLine(gameMode);
                                 //Console.ReadLine();
                                 handleChampSelect(gameMode);
@@ -172,10 +174,10 @@ namespace Leauge_Auto_Accept
             // Get data for the current ongoing champ select
             var currentChampSelect = LCU.clientRequest<LCUTypes.LolChampSelectSessionV1>("GET", "lol-champ-select/v1/session");
 
-            if (currentChampSelect.IsSuccessStatusCode)
+            if (currentChampSelect.IsSuccessStatusCode && currentChampSelect.Data != null)
             {
                 // Get needed data from the current champ select 
-                string currentChatRoom = currentChampSelect.Data.ChatDetails.MultiUserChatId;
+                string currentChatRoom = currentChampSelect.Data.ChatDetails?.MultiUserChatId ?? "";
                 if (lastChatRoom != currentChatRoom || lastChatRoom == "")
                 {
                     // Reset stuff in case someone dodged the champ select
@@ -245,15 +247,14 @@ namespace Leauge_Auto_Accept
                         var arenaCrowdFavorites = LCU.clientRequest("GET", "lol-lobby-team-builder/champ-select/v1/crowd-favorte-champion-list");
                         if (arenaCrowdFavorites.IsSuccessStatusCode)
                         {
-                            string arenaCrowdFavoritesData = arenaCrowdFavorites.Content.Replace("[", "").Replace("]", "").Replace("\n", "").Replace(" ", "");
-                            string[] arenaCrowdFavoritesSplit = arenaCrowdFavoritesData.Split(',');
+                            var arenaCrowdFavoritesData = JsonNode.Parse(arenaCrowdFavorites.Content)?.AsArray();
 
                             // Might be less than 5 champs if the player doesn't own that many champs
-                            if (arenaCrowdFavoritesSplit.Length > 0) crowdFavorite1ChampId = arenaCrowdFavoritesSplit[0];
-                            if (arenaCrowdFavoritesSplit.Length > 1) crowdFavorite2ChampId = arenaCrowdFavoritesSplit[1];
-                            if (arenaCrowdFavoritesSplit.Length > 2) crowdFavorite3ChampId = arenaCrowdFavoritesSplit[2];
-                            if (arenaCrowdFavoritesSplit.Length > 3) crowdFavorite4ChampId = arenaCrowdFavoritesSplit[3];
-                            if (arenaCrowdFavoritesSplit.Length > 4) crowdFavorite5ChampId = arenaCrowdFavoritesSplit[4];
+                            if (arenaCrowdFavoritesData?.Count > 0) crowdFavorite1ChampId = arenaCrowdFavoritesData[0]?.ToString() ?? "";
+                            if (arenaCrowdFavoritesData?.Count > 1) crowdFavorite2ChampId = arenaCrowdFavoritesData[1]?.ToString() ?? "";
+                            if (arenaCrowdFavoritesData?.Count > 2) crowdFavorite3ChampId = arenaCrowdFavoritesData[2]?.ToString() ?? "";
+                            if (arenaCrowdFavoritesData?.Count > 3) crowdFavorite4ChampId = arenaCrowdFavoritesData[3]?.ToString() ?? "";
+                            if (arenaCrowdFavoritesData?.Count > 4) crowdFavorite5ChampId = arenaCrowdFavoritesData[4]?.ToString() ?? "";
                         }
                     }
                     
@@ -273,13 +274,12 @@ namespace Leauge_Auto_Accept
                     }
                     else
                     {
-                        var spell = Data.spellsSorted
-                            .First(s => s.id == Settings.currentSpell1[1]);
+                        var spell = Data.spellsSorted.FirstOrDefault(s => s.id == Settings.currentSpell1[1]);
 
-                        if (!spell.gameModes.Contains(gameMode))
+                        if (spell == null || !spell.gameModes.Contains(gameMode))
                         {
                             pickedSpell1 = true;
-                            Log.Debug("Spell 1 no available for current gamemode, skipping");
+                            Log.Debug("Spell 1 not available for current gamemode or not loaded, skipping");
                         }
                     }
                     if (Settings.currentSpell2[1] == "0")
@@ -288,13 +288,12 @@ namespace Leauge_Auto_Accept
                     }
                     else
                     {
-                        var spell = Data.spellsSorted
-                            .First(s => s.id == Settings.currentSpell2[1]);
+                        var spell = Data.spellsSorted.FirstOrDefault(s => s.id == Settings.currentSpell2[1]);
 
-                        if (!spell.gameModes.Contains(gameMode))
+                        if (spell == null || !spell.gameModes.Contains(gameMode))
                         {
                             pickedSpell2 = true;
-                            Log.Debug("Spell 2 no available for current gamemode, skipping");
+                            Log.Debug("Spell 2 not available for current gamemode or not loaded, skipping");
                         }
                     }
                     if (!pickedSpell1)
@@ -328,15 +327,19 @@ namespace Leauge_Auto_Accept
         {
             // Check lobby endpoint for position preferences
             var lobbySessionResp = LCU.clientRequest<LCUTypes.LolLobbyV2Lobby>("GET", "lol-lobby/v2/lobby");
-            var lobbySession = lobbySessionResp.Data;
 
-            if (lobbySessionResp.IsSuccessful)
+            if (lobbySessionResp.IsSuccessful && lobbySessionResp.Data != null)
             {
+                var lobbySession = lobbySessionResp.Data;
                 string firstPositionPreference = lobbySession.LocalMember.FirstPositionPreference;
                 string secondPositionPreference = lobbySession.LocalMember.SecondPositionPreference;
 
                 //find current player within MyTeam array
-                var player = currentChampSelect.MyTeam.Single(x => x.CellId == localPlayerCellId);
+                var player = currentChampSelect.MyTeam.FirstOrDefault(x => x.CellId == localPlayerCellId);
+                if (player == null)
+                {
+                    return true;
+                }
 
                 if (string.Compare(firstPositionPreference, player.AssignedPosition, true) == 0) return true;
                 if (string.Compare(secondPositionPreference, player.AssignedPosition, true) == 0) return false;
@@ -350,9 +353,12 @@ namespace Leauge_Auto_Accept
         {
             var conversationsResp = LCU.clientRequest<LCUTypes.LolChatConversationsV1[]>("GET", "lol-chat/v1/conversations", "");
 
-            if (conversationsResp.Content.Contains(chatId))
+            if (!string.IsNullOrEmpty(chatId) && conversationsResp.Content?.Contains(chatId) == true)
             {
-                Data.loadPlayerChatId();
+                if (!Data.loadPlayerChatId())
+                {
+                    return;
+                }
 
                 long currentTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
@@ -405,16 +411,16 @@ namespace Leauge_Auto_Accept
         internal static void handleChampSelectActions(LCUTypes.LolChampSelectSessionV1 currentChampSelect, int localPlayerCellId)
         {
             // This logic skips modes that aren't draft
-            if (currentChampSelect.Actions.Count == 0) return;
+            if (currentChampSelect.Actions == null || currentChampSelect.Actions.Count == 0) return;
 
             var actionsFlat = currentChampSelect.Actions.SelectMany(list => list.AsArray()); //flatten the weird two dimensional array
 
-            foreach (var act in actionsFlat.Where(x => (int)x["actorCellId"] == localPlayerCellId && (bool)x["completed"] == false))
+            foreach (var act in actionsFlat.Where(x => (int?)x["actorCellId"] == localPlayerCellId && (bool?)x["completed"] == false))
             {
                 string actionType = (string)act["type"];
-                int championId = (int)act["championId"];
-                int actId = (int)act["id"];
-                bool ActIsInProgress = (bool)act["isInProgress"];
+                int championId = (int?)act["championId"] ?? 0;
+                int actId = (int?)act["id"] ?? 0;
+                bool ActIsInProgress = (bool?)act["isInProgress"] ?? false;
 
                 switch(actionType)
                 {
@@ -465,9 +471,8 @@ namespace Leauge_Auto_Accept
 
                     foreach (var favIdStr in favorites)
                     {
-                        if (!pickedChamp && isInCrowdFavoriteChamps(favIdStr))
+                        if (!pickedChamp && int.TryParse(favIdStr, out int favId) && isInCrowdFavoriteChamps(favIdStr))
                         {
-                            int favId = int.Parse(favIdStr);
                             hoverChampion(actId, favId, "pick");
                             if (pickedChamp) championId = favId; // assign only if hover succeeded
                         }
@@ -479,17 +484,31 @@ namespace Leauge_Auto_Accept
 
                 if (!pickedChamp && championId != -3)  //TODO: -3 is what???
                 {
-                    int primaryChampId = int.Parse(usePrimaryChamp ? Settings.currentChamp[1] : Settings.secondaryChamp[1]);
-                    int primaryRunesId = int.Parse(usePrimaryChamp ? Settings.currentChampRunes[1] : Settings.secondaryChampRunes[1]);
-                    int backupChampId = int.Parse(usePrimaryChamp ? Settings.currentBackupChamp[1] : Settings.secondaryBackupChamp[1]);
-                    int backupRunesId = int.Parse(usePrimaryChamp ? Settings.currentBackupChampRunes[1] : Settings.secondaryBackupChampRunes[1]);
+                    int primaryChampId = ParseId(usePrimaryChamp ? Settings.currentChamp[1] : Settings.secondaryChamp[1]);
+                    int primaryRunesId = ParseId(usePrimaryChamp ? Settings.currentChampRunes[1] : Settings.secondaryChampRunes[1]);
+                    int backupChampId = ParseId(usePrimaryChamp ? Settings.currentBackupChamp[1] : Settings.secondaryBackupChamp[1]);
+                    int backupRunesId = ParseId(usePrimaryChamp ? Settings.currentBackupChampRunes[1] : Settings.secondaryBackupChampRunes[1]);
+
+                    if (primaryChampId == 0 && !usePrimaryChamp)
+                    {
+                        primaryChampId = ParseId(Settings.currentChamp[1]);
+                        primaryRunesId = ParseId(Settings.currentChampRunes[1]);
+                    }
+                    if (backupChampId == 0 && !usePrimaryChamp)
+                    {
+                        backupChampId = ParseId(Settings.currentBackupChamp[1]);
+                        backupRunesId = ParseId(Settings.currentBackupChampRunes[1]);
+                    }
 
                     // Try first choice based on player is assigned primary or secondary role
-                    hoverChampion(actId, primaryChampId, "pick");
-                    handleRunes(primaryRunesId);
+                    if (primaryChampId > 0)
+                    {
+                        hoverChampion(actId, primaryChampId, "pick");
+                        handleRunes(primaryRunesId);
+                    }
 
                     // If first choice didn't work (pickedChamp is still false), try second choice
-                    if (!pickedChamp)
+                    if (!pickedChamp && backupChampId > 0)
                     {
                         hoverChampion(actId, backupChampId, "pick");
                         handleRunes(backupRunesId);
@@ -545,7 +564,7 @@ namespace Leauge_Auto_Accept
                     {
                         // Ban none if the setting is disabled.
                         bool dontBanCrowd = isArena && Settings.banCrowdFavourite && isInCrowdFavoriteChamps(Settings.currentBan[1]);
-                        hoverChampion(actId, int.Parse(dontBanCrowd ? "0" : Settings.currentBan[1]), "ban");
+                        hoverChampion(actId, ParseId(dontBanCrowd ? "0" : Settings.currentBan[1]), "ban");
                     }
                 }
 
@@ -582,6 +601,11 @@ namespace Leauge_Auto_Accept
 
         private static void handleRunes(int currentRunesId)
         {
+            if (currentRunesId <= 0)
+            {
+                return;
+            }
+
             Log.Info("handleRunes: currentRunesId={0}", currentRunesId);
             var runesResp = LCU.clientRequest("PUT", "lol-perks/v1/currentpage", $"{currentRunesId}");
         }
@@ -630,18 +654,38 @@ namespace Leauge_Auto_Accept
             var swapResp = LCU.clientRequest("GET", "lol-champ-select/v1/ongoing-swap");
             if (swapResp.IsSuccessStatusCode)
             {
+                JsonNode swap;
+                try
+                {
+                    swap = JsonNode.Parse(swapResp.Content);
+                }
+                catch (JsonException ex)
+                {
+                    Log.Debug(ex, "Failed to parse ongoing swap response.");
+                    return;
+                }
+
                 // If the swap was called by local player, return
-                if (swapResp.Content.Contains("initiatedByLocalPlayer\":true"))
+                if ((bool?)swap?["initiatedByLocalPlayer"] == true)
                 {
                     return;
                 }
                 // Get action ID
-                string swapId = swapResp.Content.Split("\"id\":")[1].Split(',')[0];
+                int? swapId = (int?)swap?["id"];
+                if (swapId == null)
+                {
+                    return;
+                }
 
                 // Swap pick order
                 LCU.clientRequest("POST", "lol-champ-select/v1/session/swaps/" + swapId + "/accept");
                 LCU.clientRequest("POST", "lol-champ-select/v1/ongoing-swap/" + swapId + "/clear");
             }
+        }
+
+        private static int ParseId(string value)
+        {
+            return int.TryParse(value, out int result) ? result : 0;
         }
     }
 }
