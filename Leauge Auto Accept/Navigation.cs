@@ -706,12 +706,15 @@ namespace Leauge_Auto_Accept
                     SwapController.ClearSelection();
                     break;
                 case 6:
-                    SwapController.StartSequence(SwapKind.Position);
+                    SwapController.StartSequence(SwapKind.PickOrder);
                     break;
                 case 7:
-                    SwapController.StartSequence(SwapKind.Champion);
+                    SwapController.StartSequence(SwapKind.Position);
                     break;
                 case 8:
+                    SwapController.StartSequence(SwapKind.Champion);
+                    break;
+                case 9:
                     SwapController.CancelSequence();
                     break;
             }

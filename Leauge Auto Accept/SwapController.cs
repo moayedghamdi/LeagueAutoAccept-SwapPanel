@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,12 +14,20 @@ namespace Leauge_Auto_Accept
         public string Role { get; init; } = "";
         public int ChampionId { get; init; }
         public int ChampionPickIntent { get; init; }
+        public int PickOrder { get; init; }
+        public int? PickOrderSwapId { get; init; }
+        public string PickOrderSwapState { get; init; } = "";
         public int? PositionSwapId { get; init; }
         public string PositionSwapState { get; init; } = "";
         public int? ChampionSwapId { get; init; }
         public string ChampionSwapState { get; init; } = "";
         public bool Selected { get; set; }
         public bool IsPending { get; init; }
+
+        public bool PickOrderSwapEligible =>
+            PickOrderSwapId.HasValue
+            && SwapService.IsAvailable(PickOrderSwapState)
+            && PickOrder > 0;
 
         public bool RoleSwapEligible =>
             PositionSwapId.HasValue
@@ -41,6 +50,7 @@ namespace Leauge_Auto_Accept
         public string LocalRole { get; init; } = "Unassigned";
         public int LocalChampionId { get; init; }
         public int LocalChampionPickIntent { get; init; }
+        public int LocalPickOrder { get; init; }
         public IReadOnlyList<SwapTeammateState> Teammates { get; init; } = Array.Empty<SwapTeammateState>();
         public bool IsSequenceRunning { get; set; }
         public int? PendingCellId { get; set; }
@@ -146,7 +156,8 @@ namespace Leauge_Auto_Accept
                     foreach (SwapTeammateState teammate in CurrentState.Teammates)
                     {
                         teammate.Selected = IsEligible(teammate, SwapKind.Position)
-                            || IsEligible(teammate, SwapKind.Champion);
+                            || IsEligible(teammate, SwapKind.Champion)
+                            || IsEligible(teammate, SwapKind.PickOrder);
                         if (teammate.Selected)
                         {
                             selected++;
@@ -280,6 +291,7 @@ namespace Leauge_Auto_Accept
                     SwapTeammateState teammate;
                     string localRole;
                     int localChampionId;
+                    int localPickOrder;
                     lock (StateLock)
                     {
                         if (!SessionMatches(sessionKey))
@@ -294,9 +306,12 @@ namespace Leauge_Auto_Accept
                             continue;
                         }
 
-                        int? swapId = kind == SwapKind.Position
-                            ? teammate.PositionSwapId
-                            : teammate.ChampionSwapId;
+                        int? swapId = kind switch
+                        {
+                            SwapKind.PickOrder => teammate.PickOrderSwapId,
+                            SwapKind.Position => teammate.PositionSwapId,
+                            _ => teammate.ChampionSwapId
+                        };
                         if (!swapId.HasValue)
                         {
                             continue;
@@ -309,6 +324,7 @@ namespace Leauge_Auto_Accept
                             $"Requesting {SwapService.KindName(kind).ToLowerInvariant()} swap with {teammate.Label}...";
                         localRole = CurrentState.LocalRole;
                         localChampionId = CurrentState.LocalChampionId;
+                        localPickOrder = CurrentState.LocalPickOrder;
                     }
 
                     attempted++;
@@ -345,8 +361,10 @@ namespace Leauge_Auto_Accept
                         ActiveSwapId.Value,
                         localRole,
                         localChampionId,
+                        localPickOrder,
                         teammate.Role,
                         teammate.ChampionId,
+                        teammate.PickOrder,
                         cancellationToken);
 
                     if (outcome == SequenceOutcome.Accepted)
@@ -425,8 +443,10 @@ namespace Leauge_Auto_Accept
             int swapId,
             string previousLocalRole,
             int previousLocalChampionId,
+            int previousLocalPickOrder,
             string previousTargetRole,
             int previousTargetChampionId,
+            int previousTargetPickOrder,
             CancellationToken cancellationToken)
         {
             DateTime started = DateTime.UtcNow;
@@ -451,22 +471,37 @@ namespace Leauge_Auto_Accept
                         return SequenceOutcome.DeclinedOrUnavailable;
                     }
 
-                    string state = kind == SwapKind.Position
-                        ? teammate.PositionSwapState
-                        : teammate.ChampionSwapState;
-                    int? currentSwapId = kind == SwapKind.Position
-                        ? teammate.PositionSwapId
-                        : teammate.ChampionSwapId;
+                    string state = kind switch
+                    {
+                        SwapKind.PickOrder => teammate.PickOrderSwapState,
+                        SwapKind.Position => teammate.PositionSwapState,
+                        _ => teammate.ChampionSwapState
+                    };
+                    int? currentSwapId = kind switch
+                    {
+                        SwapKind.PickOrder => teammate.PickOrderSwapId,
+                        SwapKind.Position => teammate.PositionSwapId,
+                        _ => teammate.ChampionSwapId
+                    };
 
                     sawPending |= SwapService.IsPending(state);
 
-                    bool valuesSwapped = kind == SwapKind.Position
-                        ? string.Equals(CurrentState.LocalRole, previousTargetRole, StringComparison.OrdinalIgnoreCase)
-                            && string.Equals(teammate.Role, previousLocalRole, StringComparison.OrdinalIgnoreCase)
-                        : previousLocalChampionId > 0
+                    bool valuesSwapped = kind switch
+                    {
+                        SwapKind.PickOrder =>
+                            previousLocalPickOrder > 0
+                            && previousTargetPickOrder > 0
+                            && CurrentState.LocalPickOrder == previousTargetPickOrder
+                            && teammate.PickOrder == previousLocalPickOrder,
+                        SwapKind.Position =>
+                            string.Equals(CurrentState.LocalRole, previousTargetRole, StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(teammate.Role, previousLocalRole, StringComparison.OrdinalIgnoreCase),
+                        _ =>
+                            previousLocalChampionId > 0
                             && previousTargetChampionId > 0
                             && CurrentState.LocalChampionId == previousTargetChampionId
-                            && teammate.ChampionId == previousLocalChampionId;
+                            && teammate.ChampionId == previousLocalChampionId
+                    };
 
                     if (valuesSwapped || string.Equals(state, "ACCEPTED", StringComparison.OrdinalIgnoreCase))
                     {
@@ -504,6 +539,7 @@ namespace Leauge_Auto_Accept
 
             string sessionKey = $"{session.GameId}:{session.Id}";
             List<SwapTeammateState> teammates = new();
+            Dictionary<int, int> pickOrders = GetAllyPickOrders(session);
             int teammateNumber = 0;
 
             foreach (LCUTypes.MyTeam player in session.MyTeam ?? Array.Empty<LCUTypes.MyTeam>())
@@ -514,6 +550,8 @@ namespace Leauge_Auto_Accept
                 }
 
                 teammateNumber++;
+                LCUTypes.PickOrderSwap pickOrderSwap =
+                    session.PickOrderSwaps?.FirstOrDefault(swap => swap.CellId == player.CellId);
                 LCUTypes.PositionSwap positionSwap =
                     session.PositionSwaps?.FirstOrDefault(swap => swap.CellId == player.CellId);
                 LCUTypes.ChampionSwap championSwap =
@@ -528,11 +566,15 @@ namespace Leauge_Auto_Accept
                     Role = role,
                     ChampionId = player.ChampionId,
                     ChampionPickIntent = player.ChampionPickIntent,
+                    PickOrder = pickOrders.GetValueOrDefault(player.CellId),
+                    PickOrderSwapId = pickOrderSwap?.Id,
+                    PickOrderSwapState = pickOrderSwap?.State ?? "",
                     PositionSwapId = positionSwap?.Id,
                     PositionSwapState = positionSwap?.State ?? "",
                     ChampionSwapId = championSwap?.Id,
                     ChampionSwapState = championSwap?.State ?? "",
-                    IsPending = SwapService.IsPending(positionSwap?.State)
+                    IsPending = SwapService.IsPending(pickOrderSwap?.State)
+                        || SwapService.IsPending(positionSwap?.State)
                         || SwapService.IsPending(championSwap?.State)
                 });
             }
@@ -562,6 +604,7 @@ namespace Leauge_Auto_Accept
                     LocalRole = SwapService.PositionName(localPlayer.AssignedPosition),
                     LocalChampionId = localPlayer.ChampionId,
                     LocalChampionPickIntent = localPlayer.ChampionPickIntent,
+                    LocalPickOrder = pickOrders.GetValueOrDefault(localPlayer.CellId),
                     Teammates = teammates,
                     IsSequenceRunning = CurrentState.IsSequenceRunning,
                     PendingCellId = CurrentState.PendingCellId,
@@ -578,9 +621,10 @@ namespace Leauge_Auto_Accept
             if (sessionChanged)
             {
                 Log.Info(
-                    "Champion select detected. localCellId={0} teammateCount={1} positionSwapContracts={2} championSwapContracts={3}",
+                    "Champion select detected. localCellId={0} teammateCount={1} pickOrderSwapContracts={2} positionSwapContracts={3} championSwapContracts={4}",
                     session.LocalPlayerCellId,
                     teammates.Count,
+                    session.PickOrderSwaps?.Count ?? 0,
                     session.PositionSwaps?.Count ?? 0,
                     session.Trades?.Count ?? 0);
             }
@@ -626,6 +670,13 @@ namespace Leauge_Auto_Accept
 
         private static bool IsEligible(SwapTeammateState teammate, SwapKind kind)
         {
+            if (kind == SwapKind.PickOrder)
+            {
+                return teammate.PickOrderSwapEligible
+                    && CurrentState.LocalPickOrder > 0
+                    && CurrentState.LocalPickOrder != teammate.PickOrder;
+            }
+
             if (kind == SwapKind.Position)
             {
                 return teammate.RoleSwapEligible
@@ -635,6 +686,49 @@ namespace Leauge_Auto_Accept
 
             return CurrentState.LocalChampionId > 0
                 && teammate.ChampionSwapEligible;
+        }
+
+        private static Dictionary<int, int> GetAllyPickOrders(
+            LCUTypes.LolChampSelectSessionV1 session)
+        {
+            Dictionary<int, int> pickOrders = new();
+            int nextOrder = 1;
+
+            foreach (JsonNode group in session.Actions ?? new JsonArray())
+            {
+                if (group is not JsonArray actions)
+                {
+                    continue;
+                }
+
+                foreach (JsonNode action in actions)
+                {
+                    if (!string.Equals(
+                            (string)action?["type"],
+                            "pick",
+                            StringComparison.OrdinalIgnoreCase)
+                        || (bool?)action?["isAllyAction"] != true)
+                    {
+                        continue;
+                    }
+
+                    int? cellId = (int?)action?["actorCellId"];
+                    if (cellId >= 0 && !pickOrders.ContainsKey(cellId.Value))
+                    {
+                        pickOrders[cellId.Value] = nextOrder++;
+                    }
+                }
+            }
+
+            foreach (LCUTypes.MyTeam player in session.MyTeam ?? Array.Empty<LCUTypes.MyTeam>())
+            {
+                if (!pickOrders.ContainsKey(player.CellId) && player.PickTurn > 0)
+                {
+                    pickOrders[player.CellId] = player.PickTurn;
+                }
+            }
+
+            return pickOrders;
         }
 
         private static bool SessionMatches(string sessionKey)
@@ -684,9 +778,9 @@ namespace Leauge_Auto_Accept
             string teammates = string.Join(
                 "|",
                 state.Teammates.Select(item =>
-                    $"{item.CellId}:{item.Role}:{item.ChampionId}:{item.ChampionPickIntent}:{item.PositionSwapId}:{item.PositionSwapState}:{item.ChampionSwapId}:{item.ChampionSwapState}:{item.Selected}"));
+                    $"{item.CellId}:{item.Role}:{item.ChampionId}:{item.ChampionPickIntent}:{item.PickOrder}:{item.PickOrderSwapId}:{item.PickOrderSwapState}:{item.PositionSwapId}:{item.PositionSwapState}:{item.ChampionSwapId}:{item.ChampionSwapState}:{item.Selected}"));
 
-            return $"{state.IsConnected}:{state.IsChampionSelectActive}:{state.SessionKey}:{state.LocalRole}:{state.LocalChampionId}:{state.LocalChampionPickIntent}:{state.IsSequenceRunning}:{state.PendingCellId}:{state.PendingKind}:{state.StatusMessage}:{teammates}";
+            return $"{state.IsConnected}:{state.IsChampionSelectActive}:{state.SessionKey}:{state.LocalRole}:{state.LocalChampionId}:{state.LocalChampionPickIntent}:{state.LocalPickOrder}:{state.IsSequenceRunning}:{state.PendingCellId}:{state.PendingKind}:{state.StatusMessage}:{teammates}";
         }
 
         private static SwapPanelState CloneState(SwapPanelState state)
@@ -700,6 +794,7 @@ namespace Leauge_Auto_Accept
                 LocalRole = state.LocalRole,
                 LocalChampionId = state.LocalChampionId,
                 LocalChampionPickIntent = state.LocalChampionPickIntent,
+                LocalPickOrder = state.LocalPickOrder,
                 Teammates = state.Teammates
                     .Select(item => new SwapTeammateState
                     {
@@ -708,6 +803,9 @@ namespace Leauge_Auto_Accept
                         Role = item.Role,
                         ChampionId = item.ChampionId,
                         ChampionPickIntent = item.ChampionPickIntent,
+                        PickOrder = item.PickOrder,
+                        PickOrderSwapId = item.PickOrderSwapId,
+                        PickOrderSwapState = item.PickOrderSwapState,
                         PositionSwapId = item.PositionSwapId,
                         PositionSwapState = item.PositionSwapState,
                         ChampionSwapId = item.ChampionSwapId,

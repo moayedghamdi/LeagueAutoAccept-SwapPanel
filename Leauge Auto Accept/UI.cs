@@ -269,7 +269,7 @@ namespace Leauge_Auto_Accept
             showCursor = false;
             topPad = 7;
             leftPad = Math.Max(0, SizeHandler.WidthCenter - 55);
-            maxPos = 9;
+            maxPos = 10;
 
             SwapPanelState state = SwapController.GetState();
             Console.Clear();
@@ -284,7 +284,8 @@ namespace Leauge_Auto_Accept
                 state.LocalChampionId,
                 state.LocalChampionPickIntent);
             Print.printCentered(
-                $"Local player | Role: {state.LocalRole} | Champion: {localChampion}",
+                $"Local player | Pick: {(state.LocalPickOrder > 0 ? $"#{state.LocalPickOrder}" : "N/A")} | " +
+                $"Role: {state.LocalRole} | Champion: {localChampion}",
                 3);
             Print.printCentered(
                 $"Selected: {state.Teammates.Count(teammate => teammate.Selected)} | " +
@@ -300,6 +301,11 @@ namespace Leauge_Auto_Accept
                 }
 
                 SwapTeammateState teammate = state.Teammates[row];
+                bool pickOrderEligible = state.IsChampionSelectActive
+                    && !state.IsSequenceRunning
+                    && state.LocalPickOrder > 0
+                    && teammate.PickOrderSwapEligible
+                    && state.LocalPickOrder != teammate.PickOrder;
                 bool roleEligible = state.IsChampionSelectActive
                     && !state.IsSequenceRunning
                     && teammate.RoleSwapEligible
@@ -315,6 +321,11 @@ namespace Leauge_Auto_Accept
                 bool pending = teammate.IsPending
                     || state.PendingCellId == teammate.CellId;
 
+                string pickOrderStatus = pickOrderEligible
+                    ? "Yes"
+                    : string.IsNullOrWhiteSpace(teammate.PickOrderSwapState)
+                        ? "N/A"
+                        : teammate.PickOrderSwapState;
                 string roleStatus = roleEligible
                     ? "Yes"
                     : string.IsNullOrWhiteSpace(teammate.PositionSwapState)
@@ -332,12 +343,18 @@ namespace Leauge_Auto_Accept
                 printSwapOption(
                     row,
                     $"[{(teammate.Selected ? 'x' : ' ')}] {teammate.Label,-10} | " +
-                    $"Champion: {champion,-24} | Role: {roleStatus,-9} | " +
-                    $"Champion: {championStatus,-9}" +
+                    $"{(teammate.PickOrder > 0 ? $"#{teammate.PickOrder}" : "N/A"),-3} | " +
+                    $"{champion,-18} | Order: {pickOrderStatus,-9} | " +
+                    $"Pos: {roleStatus,-9} | Champ: {championStatus,-9}" +
                     (pending ? " | Pending" : ""));
             }
 
             bool hasPendingSwap = state.Teammates.Any(teammate => teammate.IsPending);
+            bool hasPickOrderSelection = state.LocalPickOrder > 0
+                && state.Teammates.Any(
+                    teammate => teammate.Selected
+                        && teammate.PickOrderSwapEligible
+                        && state.LocalPickOrder != teammate.PickOrder);
             bool hasRoleSelection = state.LocalRole != "Unassigned"
                 && state.Teammates.Any(
                     teammate => teammate.Selected
@@ -354,7 +371,16 @@ namespace Leauge_Auto_Accept
             printSwapOption(5, "Clear Selection");
             printSwapOption(
                 6,
-                "Request Role Swap" +
+                "Request Pick-Order Swap" +
+                (state.IsChampionSelectActive
+                    && !state.IsSequenceRunning
+                    && !hasPendingSwap
+                    && hasPickOrderSelection
+                    ? ""
+                    : " [disabled]"));
+            printSwapOption(
+                7,
+                "Request Position Swap" +
                 (state.IsChampionSelectActive
                     && !state.IsSequenceRunning
                     && !hasPendingSwap
@@ -362,7 +388,7 @@ namespace Leauge_Auto_Accept
                     ? ""
                     : " [disabled]"));
             printSwapOption(
-                7,
+                8,
                 "Request Champion Swap" +
                 (state.IsChampionSelectActive
                     && !state.IsSequenceRunning
@@ -371,7 +397,7 @@ namespace Leauge_Auto_Accept
                     ? ""
                     : " [disabled]"));
             printSwapOption(
-                8,
+                9,
                 "Cancel Active Sequence" + (state.IsSequenceRunning ? "" : " [disabled]"));
 
             Print.printCentered($"Status: {state.StatusMessage}", topPad + maxPos + 1);

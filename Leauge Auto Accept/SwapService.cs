@@ -7,6 +7,7 @@ namespace Leauge_Auto_Accept
 {
     internal enum SwapKind
     {
+        PickOrder,
         Position,
         Champion
     }
@@ -29,6 +30,7 @@ namespace Leauge_Auto_Accept
     {
         private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
         private const string SessionEndpoint = "lol-champ-select/v1/session";
+        private const string PickOrderSwapEndpoint = SessionEndpoint + "/pick-order-swaps";
         private const string PositionSwapEndpoint = SessionEndpoint + "/position-swaps";
         private const string ChampionSwapEndpoint = SessionEndpoint + "/champion-swaps";
 
@@ -132,14 +134,25 @@ namespace Leauge_Auto_Accept
             }
 
             bool anotherRequestPending =
-                (session.PositionSwaps?.Any(swap => IsPending(swap.State)) ?? false)
+                (session.PickOrderSwaps?.Any(swap => IsPending(swap.State)) ?? false)
+                || (session.PositionSwaps?.Any(swap => IsPending(swap.State)) ?? false)
                 || (session.Trades?.Any(swap => IsPending(swap.State)) ?? false);
             if (anotherRequestPending)
             {
                 return new SwapRequestResult { Error = "Another swap request is already pending." };
             }
 
-            if (kind == SwapKind.Position)
+            if (kind == SwapKind.PickOrder)
+            {
+                LCUTypes.PickOrderSwap contract =
+                    session.PickOrderSwaps?.FirstOrDefault(swap =>
+                        swap.CellId == targetCellId && swap.Id == swapId);
+                if (contract == null || !IsAvailable(contract.State))
+                {
+                    return new SwapRequestResult { Error = "Pick-order swap unavailable." };
+                }
+            }
+            else if (kind == SwapKind.Position)
             {
                 LCUTypes.PositionSwap contract =
                     session.PositionSwaps?.FirstOrDefault(swap =>
@@ -182,9 +195,12 @@ namespace Leauge_Auto_Accept
 
         private static SwapRequestResult SendSwapAction(SwapKind kind, int swapId, string action)
         {
-            string baseEndpoint = kind == SwapKind.Position
-                ? PositionSwapEndpoint
-                : ChampionSwapEndpoint;
+            string baseEndpoint = kind switch
+            {
+                SwapKind.PickOrder => PickOrderSwapEndpoint,
+                SwapKind.Position => PositionSwapEndpoint,
+                _ => ChampionSwapEndpoint
+            };
             string endpoint = $"{baseEndpoint}/{swapId}/{action}";
 
             Log.Info(
@@ -281,7 +297,12 @@ namespace Leauge_Auto_Accept
 
         public static string KindName(SwapKind kind)
         {
-            return kind == SwapKind.Position ? "Role" : "Champion";
+            return kind switch
+            {
+                SwapKind.PickOrder => "Pick-order",
+                SwapKind.Position => "Position",
+                _ => "Champion"
+            };
         }
     }
 }
