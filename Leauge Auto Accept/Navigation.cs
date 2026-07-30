@@ -354,6 +354,9 @@ namespace Leauge_Auto_Accept
                 case "chatMessagesEdit":
                     chatMessagesEditNav();
                     break;
+                case "swapPanel":
+                    swapPanelNav();
+                    break;
             }
         }
 
@@ -430,12 +433,17 @@ namespace Leauge_Auto_Accept
                         positionLeft = UI.leftPad;
                         positionTop = SizeHandler.HeightCenter + UI.numOptions;
                     }
-                    else if (consolePosLast == UI.numOptions + 1) // Arena
+                    else if (consolePosLast == UI.numOptions + 1) // Swap Panel
                     {
-                        positionLeft = UI.leftPad + 19;
+                        positionLeft = UI.leftPad + 13;
                         positionTop = SizeHandler.HeightCenter + UI.numOptions;
                     }
-                    else if (consolePosLast == UI.maxPos - 1) // Info
+                    else if (consolePosLast == UI.numOptions + 2) // Arena
+                    {
+                        positionLeft = UI.leftPad + 28;
+                        positionTop = SizeHandler.HeightCenter + UI.numOptions;
+                    }
+                    else if (consolePosLast == UI.numOptions + 3) // Info
                     {
                         positionLeft = UI.leftPad + 40;
                         positionTop = SizeHandler.HeightCenter + UI.numOptions;
@@ -488,12 +496,17 @@ namespace Leauge_Auto_Accept
                         positionLeft = UI.leftPad;
                         positionTop = SizeHandler.HeightCenter + UI.numOptions;
                     }
-                    else if (currentPos == UI.numOptions + 1) // Arena
+                    else if (currentPos == UI.numOptions + 1) // Swap Panel
                     {
-                        positionLeft = UI.leftPad + 19;
+                        positionLeft = UI.leftPad + 13;
                         positionTop = SizeHandler.HeightCenter + UI.numOptions;
                     }
-                    else if (currentPos == UI.maxPos - 1) // Info
+                    else if (currentPos == UI.numOptions + 2) // Arena
+                    {
+                        positionLeft = UI.leftPad + 28;
+                        positionTop = SizeHandler.HeightCenter + UI.numOptions;
+                    }
+                    else if (currentPos == UI.numOptions + 3) // Info
                     {
                         positionLeft = UI.leftPad + 40;
                         positionTop = SizeHandler.HeightCenter + UI.numOptions;
@@ -665,10 +678,41 @@ namespace Leauge_Auto_Accept
                     UI.settingsMenu();
                     break;
                 case 14:
-                    UI.arenaMenu();
+                    UI.swapPanel();
                     break;
                 case 15:
+                    UI.arenaMenu();
+                    break;
+                case 16:
                     UI.infoMenu();
+                    break;
+            }
+        }
+
+        private static void swapPanelNav()
+        {
+            if (currentPos >= 0 && currentPos < 4)
+            {
+                SwapController.ToggleTeammate(currentPos);
+                return;
+            }
+
+            switch (currentPos)
+            {
+                case 4:
+                    SwapController.SelectAll();
+                    break;
+                case 5:
+                    SwapController.ClearSelection();
+                    break;
+                case 6:
+                    SwapController.StartSequence(SwapKind.Position);
+                    break;
+                case 7:
+                    SwapController.StartSequence(SwapKind.Champion);
+                    break;
+                case 8:
+                    SwapController.CancelSequence();
                     break;
             }
         }

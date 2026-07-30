@@ -60,11 +60,13 @@ namespace Leauge_Auto_Accept
             taskQueue.Start();
             var taskLeagueAlive = new Task(LCU.CheckIfLeagueClientIsOpenTask);
             taskLeagueAlive.Start();
+            var taskSwapPanel = new Task(SwapController.Run);
+            taskSwapPanel.Start();
             var taskResizeHandler = new Task(SizeHandler.SizeReader);
             taskResizeHandler.Start();
 
             // Indefinitely await them
-            var tasks = new[] { taskKeys, taskQueue, taskLeagueAlive, taskResizeHandler };
+            var tasks = new[] { taskKeys, taskQueue, taskLeagueAlive, taskSwapPanel, taskResizeHandler };
             Task.WaitAll(tasks);
 
             Console.ReadKey();

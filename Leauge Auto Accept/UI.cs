@@ -1,10 +1,13 @@
 ﻿﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Leauge_Auto_Accept
 {
     internal class UI
     {
+        private static readonly object swapPanelRenderLock = new();
+
         public static string currentWindow = "";
         public static string previousWindow = "";
         public static int currentChampPicker = 0;
@@ -143,6 +146,9 @@ namespace Leauge_Auto_Accept
                 case "chatMessagesWindow":
                     chatMessagesWindow();
                     break;
+                case "swapPanel":
+                    swapPanel();
+                    break;
                 case "initializing":
                     initializingWindow();
                     break;
@@ -215,7 +221,7 @@ namespace Leauge_Auto_Accept
             };
 
             numOptions = optionName.Length;
-            maxPos = numOptions + 3; //Settings + Arena + Info
+            maxPos = numOptions + 4; //Settings + Swap Panel + Arena + Info
 
             // Print options
             for (int i = 0; i < optionName.Length; i++)
@@ -223,9 +229,10 @@ namespace Leauge_Auto_Accept
                 Print.printCentered(addDotsInBetween(optionName[i], optionValue[i]), topPad + i);
             }
 
-            // Print the two bottom buttons that are not actaul settings
+            // Print the bottom buttons that are not actual settings
             Print.printWhenPossible("  Info", SizeHandler.HeightCenter + numOptions, leftPad + 41);
-            Print.printWhenPossible("  Arena", SizeHandler.HeightCenter + numOptions, leftPad + 20);
+            Print.printWhenPossible("  Arena", SizeHandler.HeightCenter + numOptions, leftPad + 29);
+            Print.printWhenPossible("  Swap Panel", SizeHandler.HeightCenter + numOptions, leftPad + 14);
             Print.printWhenPossible("  Settings", SizeHandler.HeightCenter + numOptions, leftPad + 1);
 
             Print.printWhenPossible("v" + Updater.appVersion, SizeHandler.WindowHeight - 1, 0, false);
@@ -233,6 +240,157 @@ namespace Leauge_Auto_Accept
             Navigation.handlePointerMovementPrint();
 
             Print.canMovePos = true;
+        }
+
+        public static void swapPanel(bool resetNavigation = true)
+        {
+            lock (swapPanelRenderLock)
+            {
+                if (!resetNavigation && currentWindow != "swapPanel")
+                {
+                    return;
+                }
+
+                renderSwapPanel(resetNavigation);
+            }
+        }
+
+        private static void renderSwapPanel(bool resetNavigation)
+        {
+            Print.canMovePos = false;
+            if (resetNavigation)
+            {
+                Navigation.currentPos = 0;
+                Navigation.consolePosLast = 0;
+            }
+
+            currentWindow = "swapPanel";
+            windowType = "normal";
+            showCursor = false;
+            topPad = 7;
+            leftPad = Math.Max(0, SizeHandler.WidthCenter - 55);
+            maxPos = 9;
+
+            SwapPanelState state = SwapController.GetState();
+            Console.Clear();
+
+            Print.printCentered("Champion Select Swap Panel", 1);
+            Print.printCentered(
+                $"League client: {(state.IsConnected ? "Connected" : "Disconnected")} | " +
+                $"Champion select: {(state.IsChampionSelectActive ? "Active" : "Not active")}",
+                2);
+
+            string localChampion = SwapService.ChampionText(
+                state.LocalChampionId,
+                state.LocalChampionPickIntent);
+            Print.printCentered(
+                $"Local player | Role: {state.LocalRole} | Champion: {localChampion}",
+                3);
+            Print.printCentered(
+                $"Selected: {state.Teammates.Count(teammate => teammate.Selected)} | " +
+                "Use Enter to toggle a teammate or activate a command.",
+                4);
+
+            for (int row = 0; row < 4; row++)
+            {
+                if (row >= state.Teammates.Count)
+                {
+                    printSwapOption(row, "[ ] Waiting for teammate...");
+                    continue;
+                }
+
+                SwapTeammateState teammate = state.Teammates[row];
+                bool roleEligible = state.IsChampionSelectActive
+                    && !state.IsSequenceRunning
+                    && teammate.RoleSwapEligible
+                    && state.LocalRole != "Unassigned"
+                    && !string.Equals(
+                        state.LocalRole,
+                        teammate.Role,
+                        StringComparison.OrdinalIgnoreCase);
+                bool championEligible = state.IsChampionSelectActive
+                    && !state.IsSequenceRunning
+                    && state.LocalChampionId > 0
+                    && teammate.ChampionSwapEligible;
+                bool pending = teammate.IsPending
+                    || state.PendingCellId == teammate.CellId;
+
+                string roleStatus = roleEligible
+                    ? "Yes"
+                    : string.IsNullOrWhiteSpace(teammate.PositionSwapState)
+                        ? "N/A"
+                        : teammate.PositionSwapState;
+                string championStatus = championEligible
+                    ? "Yes"
+                    : string.IsNullOrWhiteSpace(teammate.ChampionSwapState)
+                        ? "N/A"
+                        : teammate.ChampionSwapState;
+                string champion = SwapService.ChampionText(
+                    teammate.ChampionId,
+                    teammate.ChampionPickIntent);
+
+                printSwapOption(
+                    row,
+                    $"[{(teammate.Selected ? 'x' : ' ')}] {teammate.Label,-10} | " +
+                    $"Champion: {champion,-24} | Role: {roleStatus,-9} | " +
+                    $"Champion: {championStatus,-9}" +
+                    (pending ? " | Pending" : ""));
+            }
+
+            bool hasPendingSwap = state.Teammates.Any(teammate => teammate.IsPending);
+            bool hasRoleSelection = state.LocalRole != "Unassigned"
+                && state.Teammates.Any(
+                    teammate => teammate.Selected
+                        && teammate.RoleSwapEligible
+                        && !string.Equals(
+                            state.LocalRole,
+                            teammate.Role,
+                            StringComparison.OrdinalIgnoreCase));
+            bool hasChampionSelection = state.LocalChampionId > 0
+                && state.Teammates.Any(
+                    teammate => teammate.Selected && teammate.ChampionSwapEligible);
+
+            printSwapOption(4, "Select All Eligible Teammates");
+            printSwapOption(5, "Clear Selection");
+            printSwapOption(
+                6,
+                "Request Role Swap" +
+                (state.IsChampionSelectActive
+                    && !state.IsSequenceRunning
+                    && !hasPendingSwap
+                    && hasRoleSelection
+                    ? ""
+                    : " [disabled]"));
+            printSwapOption(
+                7,
+                "Request Champion Swap" +
+                (state.IsChampionSelectActive
+                    && !state.IsSequenceRunning
+                    && !hasPendingSwap
+                    && hasChampionSelection
+                    ? ""
+                    : " [disabled]"));
+            printSwapOption(
+                8,
+                "Cancel Active Sequence" + (state.IsSequenceRunning ? "" : " [disabled]"));
+
+            Print.printCentered($"Status: {state.StatusMessage}", topPad + maxPos + 1);
+            Print.printCentered("Esc: return to main screen", topPad + maxPos + 3);
+
+            Print.canMovePos = true;
+            Navigation.handlePointerMovementPrint();
+        }
+
+        private static void printSwapOption(int position, string text)
+        {
+            const int availableWidth = 108;
+            string output = text.Length > availableWidth
+                ? text.Substring(0, availableWidth)
+                : text;
+            Print.printWhenPossible(
+                output.PadRight(availableWidth),
+                topPad + position,
+                leftPad + 2);
         }
 
         public static void toggleAutoAcceptSettingUI(int pos)

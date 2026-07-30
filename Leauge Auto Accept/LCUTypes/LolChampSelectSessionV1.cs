@@ -65,6 +65,12 @@ namespace Leauge_Auto_Accept.LCUTypes
 		[property: JsonPropertyName("state")] string State
 	);
 
+	public record ChampionSwap(
+		[property: JsonPropertyName("cellId")] int CellId,
+		[property: JsonPropertyName("id")] int Id,
+		[property: JsonPropertyName("state")] string State
+	);
+
 	/// <summary>
 	/// lol-champ-select/v1/session
 	/// </summary>
@@ -102,7 +108,7 @@ namespace Leauge_Auto_Accept.LCUTypes
 		[property: JsonPropertyName("skipChampionSelect")] bool SkipChampionSelect,
 		[property: JsonPropertyName("theirTeam")] IReadOnlyList<TheirTeam> TheirTeam,
 		[property: JsonPropertyName("timer")] Timer Timer,
-		[property: JsonPropertyName("trades")] IReadOnlyList<object> Trades
+		[property: JsonPropertyName("trades")] IReadOnlyList<ChampionSwap> Trades
 	);
 
 	public record TheirTeam(
