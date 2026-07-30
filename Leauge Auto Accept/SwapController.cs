@@ -115,9 +115,16 @@ namespace Leauge_Auto_Accept
                 else
                 {
                     SwapTeammateState teammate = CurrentState.Teammates[rowIndex];
-                    teammate.Selected = !teammate.Selected;
-                    CurrentState.StatusMessage = teammate.Selected
-                        ? $"{teammate.Label} selected."
+                    bool shouldSelect = !teammate.Selected;
+
+                    foreach (SwapTeammateState item in CurrentState.Teammates)
+                    {
+                        item.Selected = false;
+                    }
+
+                    teammate.Selected = shouldSelect;
+                    CurrentState.StatusMessage = shouldSelect
+                        ? $"{teammate.Label} selected; previous selection cleared."
                         : $"{teammate.Label} cleared.";
                 }
             }
