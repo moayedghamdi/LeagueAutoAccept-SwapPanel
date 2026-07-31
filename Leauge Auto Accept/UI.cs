@@ -203,7 +203,6 @@ namespace Leauge_Auto_Accept
                 "Select summoner spell 2",
                 "Instant chat messages",
                 "Target Riot ID",
-                "Auto-ban target hover",
                 "Auto-dodge target (penalties apply)",
                 "Enable auto accept"
             };
@@ -223,7 +222,6 @@ namespace Leauge_Auto_Accept
                 string.IsNullOrWhiteSpace(Settings.targetRiotId)
                     ? "Not set"
                     : Settings.targetRiotId,
-                Settings.autoBanTargetHover ? "Enabled" : "Disabled",
                 Settings.autoDodgeTarget ? "Enabled" : "Disabled",
                 MainLogic.isAutoAcceptOn ? "Enabled" : "Disabled"
             };

@@ -38,7 +38,6 @@ namespace Leauge_Auto_Accept
         public static bool autoRestartQueue = false;
         public static bool cancelQueueAfterDodge = false;
         public static string targetRiotId = "";
-        public static bool autoBanTargetHover = false;
         public static bool autoDodgeTarget = false;
 
         public static int pickStartHoverDelay = 10000;
@@ -514,7 +513,6 @@ namespace Leauge_Auto_Accept
                 ",autoRestartQueue:" + autoRestartQueue +
                 ",cancelQueueAfterDodge:" + cancelQueueAfterDodge +
                 ",targetRiotId:" + encodedTargetRiotId +
-                ",autoBanTargetHover:" + autoBanTargetHover +
                 ",autoDodgeTarget:" + autoDodgeTarget +
                 ",disableUpdateCheck:" + disableUpdateCheck +
                 ",chatMessages:" + encodeMessagesIntoBase64();
@@ -573,7 +571,6 @@ namespace Leauge_Auto_Accept
             targetRiotId = value;
             if (value.Length == 0)
             {
-                autoBanTargetHover = false;
                 autoDodgeTarget = false;
             }
 
@@ -583,18 +580,6 @@ namespace Leauge_Auto_Accept
             }
 
             return true;
-        }
-
-        public static void ToggleAutoBanTargetHover()
-        {
-            if (TryGetTargetRiotIdParts(targetRiotId, out _, out _))
-            {
-                autoBanTargetHover = !autoBanTargetHover;
-                if (saveSettings)
-                {
-                    settingsSave();
-                }
-            }
         }
 
         public static void ToggleAutoDodgeTarget()
@@ -802,9 +787,6 @@ namespace Leauge_Auto_Accept
                         case "targetRiotId":
                             targetRiotId = Encoding.UTF8.GetString(
                                 Convert.FromBase64String(columns[1]));
-                            break;
-                        case "autoBanTargetHover":
-                            autoBanTargetHover = Boolean.Parse(columns[1]);
                             break;
                         case "autoDodgeTarget":
                             autoDodgeTarget = Boolean.Parse(columns[1]);

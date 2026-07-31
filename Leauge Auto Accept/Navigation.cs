@@ -715,27 +715,23 @@ namespace Leauge_Auto_Accept
                     UI.targetRiotIdEdit();
                     break;
                 case 13:
-                    Settings.ToggleAutoBanTargetHover();
-                    UI.mainScreen();
-                    break;
-                case 14:
                     Settings.ToggleAutoDodgeTarget();
                     UI.mainScreen();
                     break;
-                case 15:
+                case 14:
                     Settings.toggleAutoAcceptSetting();
                     UI.toggleAutoAcceptSettingUI(currentPos);
                     break;
-                case 16:
+                case 15:
                     UI.settingsMenu();
                     break;
-                case 17:
+                case 16:
                     UI.swapPanel();
                     break;
-                case 18:
+                case 17:
                     UI.arenaMenu();
                     break;
-                case 19:
+                case 18:
                     UI.infoMenu();
                     break;
             }
