@@ -35,12 +35,16 @@ namespace Leauge_Auto_Accept
 
         private static long queueStartTime;
         private static string lastPhase = "";
+        private static string lastTargetDodgeSessionKey = "";
+        private static bool targetDodgeRequested = false;
 
         public static void acceptQueue()
         {
             while (true)
             {
-                if (isAutoAcceptOn)
+                bool targetFeatureEnabled =
+                    Settings.autoBanTargetHover || Settings.autoDodgeTarget;
+                if (isAutoAcceptOn || targetFeatureEnabled)
                 {
                     var gameSessionResp = LCU.clientRequest<LCUTypes.LolGameflowSessionV1>("GET", "lol-gameflow/v1/session");
 
@@ -65,14 +69,26 @@ namespace Leauge_Auto_Accept
                                 Thread.Sleep(2000);
                                 break;
                             case "ReadyCheck":
-                                handleMatchmakingAccept();
+                                if (isAutoAcceptOn)
+                                {
+                                    handleMatchmakingAccept();
+                                }
+                                else
+                                {
+                                    Thread.Sleep(500);
+                                }
                                 break;
                             case "ChampSelect":
-                                var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
-                                //Console.WriteLine(gameMode);
-                                //Console.ReadLine();
-                                handleChampSelect(gameMode);
-                                handlePickOrderSwap();
+                                if (isAutoAcceptOn)
+                                {
+                                    var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
+                                    handleChampSelect(gameMode);
+                                    handlePickOrderSwap();
+                                }
+                                else
+                                {
+                                    HandleTargetChampSelectOnly();
+                                }
                                 break;
                             case "InProgress":
                                 // No need to spam requests
@@ -113,6 +129,56 @@ namespace Leauge_Auto_Accept
                     Thread.Sleep(10000);
                 }
             }
+        }
+
+        private static void HandleTargetChampSelectOnly()
+        {
+            RestResponse<LCUTypes.LolChampSelectSessionV1> response =
+                LCU.clientRequest<LCUTypes.LolChampSelectSessionV1>(
+                    "GET",
+                    "lol-champ-select/v1/session");
+            if (!response.IsSuccessStatusCode || response.Data == null)
+            {
+                return;
+            }
+
+            if (HandleTargetAutoDodge(response.Data))
+            {
+                return;
+            }
+
+            int targetHoveredChampionId = GetTargetHoveredChampionId(
+                response.Data,
+                response.Data.LocalPlayerCellId);
+            if (targetHoveredChampionId <= 0
+                || response.Data.Actions == null)
+            {
+                return;
+            }
+
+            JsonNode banAction = response.Data.Actions
+                .SelectMany(group => group.AsArray())
+                .FirstOrDefault(action =>
+                    (int?)action?["actorCellId"] == response.Data.LocalPlayerCellId
+                    && string.Equals(
+                        (string)action?["type"],
+                        "ban",
+                        StringComparison.OrdinalIgnoreCase)
+                    && (bool?)action?["completed"] == false
+                    && (bool?)action?["isInProgress"] == true);
+            if (banAction == null)
+            {
+                return;
+            }
+
+            int actionId = (int?)banAction["id"] ?? 0;
+            int championId = (int?)banAction["championId"] ?? 0;
+            handleBanAction(
+                actionId,
+                championId,
+                true,
+                response.Data,
+                targetHoveredChampionId);
         }
 
         private static void handleMatchmakingCancel()
@@ -176,6 +242,11 @@ namespace Leauge_Auto_Accept
 
             if (currentChampSelect.IsSuccessStatusCode && currentChampSelect.Data != null)
             {
+                if (HandleTargetAutoDodge(currentChampSelect.Data))
+                {
+                    return;
+                }
+
                 // Get needed data from the current champ select 
                 string currentChatRoom = currentChampSelect.Data.ChatDetails?.MultiUserChatId ?? "";
                 if (lastChatRoom != currentChatRoom || lastChatRoom == "")
@@ -414,6 +485,9 @@ namespace Leauge_Auto_Accept
             if (currentChampSelect.Actions == null || currentChampSelect.Actions.Count == 0) return;
 
             var actionsFlat = currentChampSelect.Actions.SelectMany(list => list.AsArray()); //flatten the weird two dimensional array
+            int targetHoveredChampionId = GetTargetHoveredChampionId(
+                currentChampSelect,
+                localPlayerCellId);
 
             foreach (var act in actionsFlat.Where(x => (int?)x["actorCellId"] == localPlayerCellId && (bool?)x["completed"] == false))
             {
@@ -429,10 +503,99 @@ namespace Leauge_Auto_Accept
                         handlePickAction(actId, championId, ActIsInProgress, currentChampSelect, usePrimaryChamp);
                         break;
                     case "ban":
-                        handleBanAction(actId, championId, ActIsInProgress, currentChampSelect);
+                        handleBanAction(
+                            actId,
+                            championId,
+                            ActIsInProgress,
+                            currentChampSelect,
+                            targetHoveredChampionId);
                         break;
                 }
             }
+        }
+
+        private static LCUTypes.MyTeam FindTargetTeammate(
+            LCUTypes.LolChampSelectSessionV1 currentChampSelect,
+            int localPlayerCellId)
+        {
+            if (!Settings.TryGetTargetRiotIdParts(
+                    Settings.targetRiotId,
+                    out string targetGameName,
+                    out string targetTagLine))
+            {
+                return null;
+            }
+
+            return currentChampSelect.MyTeam?.FirstOrDefault(player =>
+                player.CellId != localPlayerCellId
+                && string.Equals(
+                    player.GameName,
+                    targetGameName,
+                    StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    player.TagLine,
+                    targetTagLine,
+                    StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static int GetTargetHoveredChampionId(
+            LCUTypes.LolChampSelectSessionV1 currentChampSelect,
+            int localPlayerCellId)
+        {
+            if (!Settings.autoBanTargetHover)
+            {
+                return 0;
+            }
+
+            LCUTypes.MyTeam target = FindTargetTeammate(
+                currentChampSelect,
+                localPlayerCellId);
+            return target?.ChampionPickIntent > 0
+                ? target.ChampionPickIntent
+                : 0;
+        }
+
+        private static bool HandleTargetAutoDodge(
+            LCUTypes.LolChampSelectSessionV1 currentChampSelect)
+        {
+            string sessionKey = $"{currentChampSelect.GameId}:{currentChampSelect.Id}";
+            if (!string.Equals(
+                    lastTargetDodgeSessionKey,
+                    sessionKey,
+                    StringComparison.Ordinal))
+            {
+                lastTargetDodgeSessionKey = sessionKey;
+                targetDodgeRequested = false;
+            }
+
+            if (!Settings.autoDodgeTarget || targetDodgeRequested)
+            {
+                return false;
+            }
+
+            LCUTypes.MyTeam target = FindTargetTeammate(
+                currentChampSelect,
+                currentChampSelect.LocalPlayerCellId);
+            if (target == null)
+            {
+                return false;
+            }
+
+            targetDodgeRequested = true;
+            Log.Warn(
+                "Configured target Riot ID detected in allied champion select; requesting dodge.");
+            RestResponse response =
+                LCU.clientRequest("DELETE", "lol-champ-select/v1/session");
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Warn(
+                    "Target auto-dodge request failed. statusCode={0} responseStatus={1} error={2}",
+                    response.StatusCode,
+                    response.ResponseStatus,
+                    response.ErrorMessage);
+            }
+
+            return true;
         }
 
         private static bool ShouldHoverChampion(LCUTypes.LolChampSelectSessionV1 currentChampSelect)
@@ -547,13 +710,31 @@ namespace Leauge_Auto_Accept
             }
         }
 
-        private static void handleBanAction(int actId, int championId, bool ActIsInProgress, LCUTypes.LolChampSelectSessionV1 currentChampSelect)
+        private static void handleBanAction(
+            int actId,
+            int championId,
+            bool ActIsInProgress,
+            LCUTypes.LolChampSelectSessionV1 currentChampSelect,
+            int targetHoveredChampionId)
         {
             string champSelectPhase = currentChampSelect.Timer.Phase;
 
             // make sure it's my turn to pick and that it is not the planning phase anymore
             if (ActIsInProgress == true && champSelectPhase != "PLANNING")
             {
+                if (targetHoveredChampionId > 0)
+                {
+                    if (championId != targetHoveredChampionId)
+                    {
+                        Log.Info(
+                            "Configured target hover detected; selecting champion for ban. championId={0}",
+                            targetHoveredChampionId);
+                        hoverChampion(actId, targetHoveredChampionId, "ban");
+                    }
+
+                    lockChampion(actId, targetHoveredChampionId, "ban");
+                    return;
+                }
 
                 if (!pickedBan)
                 {
