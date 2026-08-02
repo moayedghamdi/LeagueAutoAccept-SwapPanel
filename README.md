@@ -1,36 +1,63 @@
-# Automatic queue accepter for League of Legends
-Ever wanted to go pee or grab something but you're already 10 minutes into the queue? LeagueAutoAccept is a C# console app made using the LCU API to automatically accept queue and more!
+# League Auto Accept + Champion Select Swap Panel
 
-## Screenshot
-![LeagueAutoAccept Screenshot](screenshot.png?raw=true)
+A lightweight Windows utility for the League of Legends client. It connects only to the local League Client API (LCU) and keeps the original auto-accept, champion selection, rune, spell, chat, and queue features while adding a compact champion-select swap panel.
 
-## Warnings/Disclaimer
-- Be aware that the use of the LCU API is not allowed on the Korean server (which this application does)
-- This application is not endorsed nor approved by Riot
-- It's basically a gray area but should be fine to use on servers other than Korea
+This project is based on [sweetriverfish/LeagueAutoAccept](https://github.com/sweetriverfish/LeagueAutoAccept) and remains available under the MIT License.
 
-## Download/How to run
-- Download the latest release from releases or from [here](https://github.com/sweetriverfish/LeagueAutoAccept/releases/latest/download/Leauge.Auto.Accept.exe)
-- If the application fails to launch, chances are you don't have .NET 9 Runtime installed. You can find the latest version [here](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+## Download and run
+
+1. Open this repository's **Releases** page.
+2. Download `LeagueAutoAccept-win-x64.zip` from the latest release.
+3. Extract the ZIP.
+4. Start League of Legends.
+5. Run `LeagueAutoAccept.exe`.
+
+The release is self-contained for Windows x64. A separate .NET installation is not required.
 
 ## Features
-- Automatically accept queue
-- Pick a champion
-- Ban a champion
-- Can instalock
-- Pick summoner spells
-- Send a chat message when entering lobby
 
-## Planned
-- Backup champion to pick/ban
-- Automatic runes picker (from the premade sets)
-- Manual runes creator, maybe
+- Automatically accept ready checks.
+- Select, hover, and lock champions and bans.
+- Select rune pages and summoner spells.
+- Send configured champion-select chat messages.
+- Champion-select teammate panel with roles and selected champions.
+- Request pick-order, position, and champion swaps when League reports them as available.
+- Select eligible teammates and process swap requests sequentially.
+- Cancel an active swap sequence.
+- Optional target auto-dodge in lobbies where League legitimately exposes the configured Riot ID.
 
-## Notes and stuff
-- You can build your rune page via collection>runes. The last rune page you clicked is the currently selected one.
-- Mac os is (currently) not supported
-- Feel free to suggest stuff
-- If it looks like I don't know what I'm doing that's probably because I don't know what I'm doing
+## Swap panel
+
+Open **Swap Panel** from the main screen after entering champion select. Select a teammate, then choose the appropriate request:
+
+- **Pick-Order Swap** changes draft order.
+- **Position Swap** exchanges assigned roles.
+- **Champion Swap** is available during phases where League exposes a valid trade.
+
+Availability comes directly from the current champion-select session. Buttons remain disabled when League does not expose an eligible swap contract.
+
+## Privacy and security
+
+- All LCU requests stay on the local machine.
+- The application does not upload League credentials or champion-select data.
+- Lockfile passwords and authorization headers are not logged.
+- Ranked teammates whose identities League anonymizes remain anonymous.
+- This application is not endorsed by Riot Games.
+
+Use of unofficial local client APIs may be affected by League patches or regional rules. Use the application at your own risk.
+
+## Build from source
+
+Requirements: Windows and the .NET 9 SDK.
+
+```powershell
+dotnet restore ".\Leauge Auto Accept.sln"
+dotnet build ".\Leauge Auto Accept.sln" -c Release
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-win-x64.ps1
+```
+
+The publish script creates `artifacts\LeagueAutoAccept-win-x64.zip`.
 
 ## License
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+Distributed under the [MIT License](LICENSE).

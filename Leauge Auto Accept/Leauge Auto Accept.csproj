@@ -9,6 +9,7 @@
     <Product />
     <Authors>Artem</Authors>
     <Title>League Auto Accept</Title>
+    <AssemblyName>LeagueAutoAccept</AssemblyName>
     <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
