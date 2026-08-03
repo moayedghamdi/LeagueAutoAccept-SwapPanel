@@ -35,15 +35,11 @@ namespace Leauge_Auto_Accept
 
         private static long queueStartTime;
         private static string lastPhase = "";
-        private static string lastTargetDodgeSessionKey = "";
-        private static bool targetDodgeRequested = false;
-
         public static void acceptQueue()
         {
             while (true)
             {
-                bool targetFeatureEnabled = Settings.autoDodgeTarget;
-                if (isAutoAcceptOn || targetFeatureEnabled)
+                if (isAutoAcceptOn)
                 {
                     var gameSessionResp = LCU.clientRequest<LCUTypes.LolGameflowSessionV1>("GET", "lol-gameflow/v1/session");
 
@@ -68,26 +64,12 @@ namespace Leauge_Auto_Accept
                                 Thread.Sleep(2000);
                                 break;
                             case "ReadyCheck":
-                                if (isAutoAcceptOn)
-                                {
-                                    handleMatchmakingAccept();
-                                }
-                                else
-                                {
-                                    Thread.Sleep(500);
-                                }
+                                handleMatchmakingAccept();
                                 break;
                             case "ChampSelect":
-                                if (isAutoAcceptOn)
-                                {
-                                    var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
-                                    handleChampSelect(gameMode);
-                                    handlePickOrderSwap();
-                                }
-                                else
-                                {
-                                    HandleTargetChampSelectOnly();
-                                }
+                                var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
+                                handleChampSelect(gameMode);
+                                handlePickOrderSwap();
                                 break;
                             case "InProgress":
                                 // No need to spam requests
@@ -127,23 +109,6 @@ namespace Leauge_Auto_Accept
                 {
                     Thread.Sleep(10000);
                 }
-            }
-        }
-
-        private static void HandleTargetChampSelectOnly()
-        {
-            RestResponse<LCUTypes.LolChampSelectSessionV1> response =
-                LCU.clientRequest<LCUTypes.LolChampSelectSessionV1>(
-                    "GET",
-                    "lol-champ-select/v1/session");
-            if (!response.IsSuccessStatusCode || response.Data == null)
-            {
-                return;
-            }
-
-            if (HandleTargetAutoDodge(response.Data))
-            {
-                return;
             }
         }
 
@@ -208,11 +173,6 @@ namespace Leauge_Auto_Accept
 
             if (currentChampSelect.IsSuccessStatusCode && currentChampSelect.Data != null)
             {
-                if (HandleTargetAutoDodge(currentChampSelect.Data))
-                {
-                    return;
-                }
-
                 // Get needed data from the current champ select 
                 string currentChatRoom = currentChampSelect.Data.ChatDetails?.MultiUserChatId ?? "";
                 if (lastChatRoom != currentChatRoom || lastChatRoom == "")
@@ -469,73 +429,6 @@ namespace Leauge_Auto_Accept
                         break;
                 }
             }
-        }
-
-        private static LCUTypes.MyTeam FindTargetTeammate(
-            LCUTypes.LolChampSelectSessionV1 currentChampSelect,
-            int localPlayerCellId)
-        {
-            if (!Settings.TryGetTargetRiotIdParts(
-                    Settings.targetRiotId,
-                    out string targetGameName,
-                    out string targetTagLine))
-            {
-                return null;
-            }
-
-            return currentChampSelect.MyTeam?.FirstOrDefault(player =>
-                player.CellId != localPlayerCellId
-                && string.Equals(
-                    player.GameName,
-                    targetGameName,
-                    StringComparison.OrdinalIgnoreCase)
-                && string.Equals(
-                    player.TagLine,
-                    targetTagLine,
-                    StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static bool HandleTargetAutoDodge(
-            LCUTypes.LolChampSelectSessionV1 currentChampSelect)
-        {
-            string sessionKey = $"{currentChampSelect.GameId}:{currentChampSelect.Id}";
-            if (!string.Equals(
-                    lastTargetDodgeSessionKey,
-                    sessionKey,
-                    StringComparison.Ordinal))
-            {
-                lastTargetDodgeSessionKey = sessionKey;
-                targetDodgeRequested = false;
-            }
-
-            if (!Settings.autoDodgeTarget || targetDodgeRequested)
-            {
-                return false;
-            }
-
-            LCUTypes.MyTeam target = FindTargetTeammate(
-                currentChampSelect,
-                currentChampSelect.LocalPlayerCellId);
-            if (target == null)
-            {
-                return false;
-            }
-
-            targetDodgeRequested = true;
-            Log.Warn(
-                "Configured target Riot ID detected in allied champion select; requesting dodge.");
-            RestResponse response =
-                LCU.clientRequest("DELETE", "lol-champ-select/v1/session");
-            if (!response.IsSuccessStatusCode)
-            {
-                Log.Warn(
-                    "Target auto-dodge request failed. statusCode={0} responseStatus={1} error={2}",
-                    response.StatusCode,
-                    response.ResponseStatus,
-                    response.ErrorMessage);
-            }
-
-            return true;
         }
 
         private static bool ShouldHoverChampion(LCUTypes.LolChampSelectSessionV1 currentChampSelect)

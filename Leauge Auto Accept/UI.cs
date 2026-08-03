@@ -202,8 +202,6 @@ namespace Leauge_Auto_Accept
                 "Select summoner spell 1",
                 "Select summoner spell 2",
                 "Instant chat messages",
-                "Target Riot ID",
-                "Auto-dodge target (penalties apply)",
                 "Enable auto accept"
             };
             string[] optionValue = {
@@ -219,10 +217,6 @@ namespace Leauge_Auto_Accept
                 Settings.currentSpell1[0],
                 Settings.currentSpell2[0],
                 Settings.chatMessagesEnabled ? "Enabled, " + Settings.chatMessages.Count : "Disabled",
-                string.IsNullOrWhiteSpace(Settings.targetRiotId)
-                    ? "Not set"
-                    : Settings.targetRiotId,
-                Settings.autoDodgeTarget ? "Enabled" : "Disabled",
                 MainLogic.isAutoAcceptOn ? "Enabled" : "Disabled"
             };
 
@@ -1287,40 +1281,6 @@ namespace Leauge_Auto_Accept
 
             Print.canMovePos = true;
             Navigation.handlePointerMovementPrint();
-            updateCursorPosition();
-        }
-
-        public static void targetRiotIdEdit()
-        {
-            Print.canMovePos = false;
-            Console.Clear();
-            Navigation.currentPos = 0;
-            Navigation.consolePosLast = 0;
-
-            currentWindow = "targetRiotIdEdit";
-            windowType = "messageEdit";
-            showCursor = true;
-            topPad = SizeHandler.HeightCenter;
-            leftPad = SizeHandler.WidthCenter;
-            maxPos = 2;
-            Navigation.currentInput = Settings.targetRiotId;
-
-            Print.printCentered("Target Riot ID (GameName#TagLine)", topPad - 2, false);
-            updateMessageEdit();
-            Print.printCentered("Save          Cancel", topPad + 3, false);
-
-            Print.canMovePos = true;
-            Navigation.handlePointerMovementPrint();
-            updateCursorPosition();
-        }
-
-        public static void showTargetRiotIdValidationError()
-        {
-            Print.printCentered(
-                "Enter a complete Riot ID such as GameName#TagLine, or leave it empty.",
-                topPad + 5,
-                false,
-                true);
             updateCursorPosition();
         }
 

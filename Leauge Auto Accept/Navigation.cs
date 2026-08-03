@@ -281,9 +281,6 @@ namespace Leauge_Auto_Accept
                 case "chatMessagesEdit":
                     UI.chatMessagesWindow();
                     break;
-                case "targetRiotIdEdit":
-                    UI.mainScreen();
-                    break;
                 default:
                     if (currentInput == "Lochel" && UI.windowType == "grid")
                     {
@@ -357,9 +354,6 @@ namespace Leauge_Auto_Accept
                 case "chatMessagesEdit":
                     chatMessagesEditNav();
                     break;
-                case "targetRiotIdEdit":
-                    targetRiotIdEditNav();
-                    break;
                 case "swapPanel":
                     swapPanelNav();
                     break;
@@ -376,8 +370,7 @@ namespace Leauge_Auto_Accept
                     UI.updateCurrentFilter();
                 }
             }
-            else if (UI.currentWindow == "chatMessagesEdit"
-                || UI.currentWindow == "targetRiotIdEdit")
+            else if (UI.currentWindow == "chatMessagesEdit")
             {
                 if (currentInput.Length > 0)
                 {
@@ -402,8 +395,7 @@ namespace Leauge_Auto_Accept
                     UI.updateCurrentFilter();
                 }
             }
-            if (UI.currentWindow == "chatMessagesEdit"
-                || UI.currentWindow == "targetRiotIdEdit")
+            if (UI.currentWindow == "chatMessagesEdit")
             {
                 if (currentInput.Length < 200)
                 {
@@ -479,13 +471,6 @@ namespace Leauge_Auto_Accept
                             break;
                     }
                 }
-                else if (UI.currentWindow == "targetRiotIdEdit")
-                {
-                    positionTop = UI.topPad + 3;
-                    positionLeft = consolePosLast == 0
-                        ? UI.leftPad - 14
-                        : UI.leftPad;
-                }
                 else
                 {
                     int[] consolePos = getPositionOnConsole(consolePosLast);
@@ -549,13 +534,6 @@ namespace Leauge_Auto_Accept
                             break;
                     }
                 }
-                else if (UI.currentWindow == "targetRiotIdEdit")
-                {
-                    positionTop = UI.topPad + 3;
-                    positionLeft = currentPos == 0
-                        ? UI.leftPad - 14
-                        : UI.leftPad;
-                }
                 else
                 {
                     int[] consolePos = getPositionOnConsole(currentPos);
@@ -618,25 +596,6 @@ namespace Leauge_Auto_Accept
             {
                 //cancel
                 UI.chatMessagesWindow();
-            }
-        }
-
-        private static void targetRiotIdEditNav()
-        {
-            if (currentPos == 0)
-            {
-                if (Settings.SetTargetRiotId(currentInput))
-                {
-                    UI.mainScreen();
-                }
-                else
-                {
-                    UI.showTargetRiotIdValidationError();
-                }
-            }
-            else
-            {
-                UI.mainScreen();
             }
         }
 
@@ -712,26 +671,19 @@ namespace Leauge_Auto_Accept
                     UI.chatMessagesWindow();
                     break;
                 case 12:
-                    UI.targetRiotIdEdit();
-                    break;
-                case 13:
-                    Settings.ToggleAutoDodgeTarget();
-                    UI.mainScreen();
-                    break;
-                case 14:
                     Settings.toggleAutoAcceptSetting();
                     UI.toggleAutoAcceptSettingUI(currentPos);
                     break;
-                case 15:
+                case 13:
                     UI.settingsMenu();
                     break;
-                case 16:
+                case 14:
                     UI.swapPanel();
                     break;
-                case 17:
+                case 15:
                     UI.arenaMenu();
                     break;
-                case 18:
+                case 16:
                     UI.infoMenu();
                     break;
             }

@@ -37,8 +37,6 @@ namespace Leauge_Auto_Accept
         public static bool shouldAutoAcceptbeOn = false;
         public static bool autoRestartQueue = false;
         public static bool cancelQueueAfterDodge = false;
-        public static string targetRiotId = "";
-        public static bool autoDodgeTarget = false;
 
         public static int pickStartHoverDelay = 10000;
         public static int pickStartlockDelay = 999999999;
@@ -459,8 +457,6 @@ namespace Leauge_Auto_Accept
 
         public static void settingsSave()
         {
-            string encodedTargetRiotId = Convert.ToBase64String(
-                Encoding.UTF8.GetBytes(targetRiotId ?? ""));
             string config =
                 "champName:" + currentChamp[0] +
                 ",champId:" + currentChamp[1] +
@@ -512,8 +508,6 @@ namespace Leauge_Auto_Accept
                 ",instantHover:" + instantHover +
                 ",autoRestartQueue:" + autoRestartQueue +
                 ",cancelQueueAfterDodge:" + cancelQueueAfterDodge +
-                ",targetRiotId:" + encodedTargetRiotId +
-                ",autoDodgeTarget:" + autoDodgeTarget +
                 ",disableUpdateCheck:" + disableUpdateCheck +
                 ",chatMessages:" + encodeMessagesIntoBase64();
 
@@ -558,59 +552,6 @@ namespace Leauge_Auto_Accept
             {
                 settingsSave();
             }
-        }
-
-        public static bool SetTargetRiotId(string riotId)
-        {
-            string value = riotId?.Trim() ?? "";
-            if (value.Length > 0 && !TryGetTargetRiotIdParts(value, out _, out _))
-            {
-                return false;
-            }
-
-            targetRiotId = value;
-            if (value.Length == 0)
-            {
-                autoDodgeTarget = false;
-            }
-
-            if (saveSettings)
-            {
-                settingsSave();
-            }
-
-            return true;
-        }
-
-        public static void ToggleAutoDodgeTarget()
-        {
-            if (TryGetTargetRiotIdParts(targetRiotId, out _, out _))
-            {
-                autoDodgeTarget = !autoDodgeTarget;
-                if (saveSettings)
-                {
-                    settingsSave();
-                }
-            }
-        }
-
-        public static bool TryGetTargetRiotIdParts(
-            string riotId,
-            out string gameName,
-            out string tagLine)
-        {
-            gameName = "";
-            tagLine = "";
-            string value = riotId?.Trim() ?? "";
-            int separator = value.LastIndexOf('#');
-            if (separator <= 0 || separator >= value.Length - 1)
-            {
-                return false;
-            }
-
-            gameName = value.Substring(0, separator).Trim();
-            tagLine = value.Substring(separator + 1).Trim();
-            return gameName.Length > 0 && tagLine.Length > 0;
         }
 
         public static void deleteSettings()
@@ -783,13 +724,6 @@ namespace Leauge_Auto_Accept
                             break;
                         case "cancelQueueAfterDodge":
                             cancelQueueAfterDodge = Boolean.Parse(columns[1]);
-                            break;
-                        case "targetRiotId":
-                            targetRiotId = Encoding.UTF8.GetString(
-                                Convert.FromBase64String(columns[1]));
-                            break;
-                        case "autoDodgeTarget":
-                            autoDodgeTarget = Boolean.Parse(columns[1]);
                             break;
                         case "chatMessages":
                             decodeMessagesFromBase64(columns[1]);
