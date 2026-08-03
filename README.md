@@ -1,63 +1,102 @@
-# League Auto Accept + Champion Select Swap Panel
+<div align="center">
 
-A lightweight Windows utility for the League of Legends client. It connects only to the local League Client API (LCU) and keeps the original auto-accept, champion selection, rune, spell, chat, and queue features while adding a compact champion-select swap panel.
+# LeagueAutoAccept Swap Panel
 
-This project is based on [sweetriverfish/LeagueAutoAccept](https://github.com/sweetriverfish/LeagueAutoAccept) and remains available under the MIT License.
+**A lightweight League of Legends auto-accept utility with champion-select swap controls.**
+
+[![Latest release](https://img.shields.io/github/v/release/moayedghamdi/LeagueAutoAccept-SwapPanel?style=for-the-badge)](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest)
+[![Download](https://img.shields.io/github/downloads/moayedghamdi/LeagueAutoAccept-SwapPanel/total?style=for-the-badge&label=downloads)](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest)
+[![License](https://img.shields.io/github/license/moayedghamdi/LeagueAutoAccept-SwapPanel?style=for-the-badge)](LICENSE)
+[![Windows](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=for-the-badge&logo=windows)](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest)
+
+[**Download the latest Windows build**](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip)
+
+</div>
+
+> [!IMPORTANT]
+> This repository is a fork of [sweetriverfish/LeagueAutoAccept](https://github.com/sweetriverfish/LeagueAutoAccept). The original application, architecture, and auto-accept functionality were created by its upstream authors. This fork builds on that work with a champion-select swap panel, pick-order swapping, position swapping, champion trading controls, and self-contained Windows releases.
+
+## What this fork adds
+
+| Addition | What it does |
+| --- | --- |
+| Champion-select swap panel | Displays your four allies, assigned roles, pick order, and selected champions. |
+| Pick-order swaps | Requests a draft-order swap through League's local client API. |
+| Position swaps | Requests an assigned-role swap with an eligible teammate. |
+| Champion swaps | Requests a champion trade when League exposes an eligible trade contract. |
+| Safe sequential requests | Processes selected teammates one at a time and stops after an accepted swap. |
+| Live status | Shows connection, champion-select, pending-request, timeout, and error states. |
+| Self-contained release | Includes the .NET runtime so users can extract the ZIP and run the application. |
+
+All original features remain available, including automatic ready-check acceptance, champion selection, bans, rune pages, summoner spells, lobby chat messages, and queue options.
+
+## Screenshot
+
+<div align="center">
+  <img src="screenshot.png" alt="LeagueAutoAccept console interface" width="760">
+</div>
 
 ## Download and run
 
-1. Open this repository's **Releases** page.
-2. Download `LeagueAutoAccept-win-x64.zip` from the latest release.
-3. Extract the ZIP.
-4. Start League of Legends.
-5. Run `LeagueAutoAccept.exe`.
+1. Download [`LeagueAutoAccept-win-x64.zip`](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip).
+2. Extract the ZIP to a normal folder.
+3. Start the League of Legends client.
+4. Run `LeagueAutoAccept.exe`.
 
-The release is self-contained for Windows x64. A separate .NET installation is not required.
+The Windows x64 release is self-contained. You do **not** need to install .NET separately.
 
-## Features
+Windows SmartScreen may warn about an unsigned community executable. The complete source and repeatable publishing script are included in this repository so the build can be inspected or reproduced.
 
-- Automatically accept ready checks.
-- Select, hover, and lock champions and bans.
-- Select rune pages and summoner spells.
-- Send configured champion-select chat messages.
-- Champion-select teammate panel with roles and selected champions.
-- Request pick-order, position, and champion swaps when League reports them as available.
-- Select eligible teammates and process swap requests sequentially.
-- Cancel an active swap sequence.
-- Optional target auto-dodge in lobbies where League legitimately exposes the configured Riot ID.
+## Using the swap panel
 
-## Swap panel
+1. Enter champion select.
+2. Open **Swap Panel** from the application's main screen.
+3. Select a teammate.
+4. Choose one of the available actions:
 
-Open **Swap Panel** from the main screen after entering champion select. Select a teammate, then choose the appropriate request:
+   - **Request Pick-Order Swap** — exchange draft positions.
+   - **Request Position Swap** — exchange assigned roles.
+   - **Request Champion Swap** — trade locked champions when League permits it.
 
-- **Pick-Order Swap** changes draft order.
-- **Position Swap** exchanges assigned roles.
-- **Champion Swap** is available during phases where League exposes a valid trade.
+The application reads swap eligibility directly from the active champion-select session. An action remains disabled when League does not expose a valid swap contract.
 
-Availability comes directly from the current champion-select session. Buttons remain disabled when League does not expose an eligible swap contract.
+## How it works
 
-## Privacy and security
+The application reads League's local lockfile, authenticates against the local League Client API (LCU), and monitors gameflow and champion-select state. Swap requests are sent only to the locally running League client.
 
-- All LCU requests stay on the local machine.
-- The application does not upload League credentials or champion-select data.
+- No cloud service is used.
+- No League credentials are uploaded.
 - Lockfile passwords and authorization headers are not logged.
-- Ranked teammates whose identities League anonymizes remain anonymous.
-- This application is not endorsed by Riot Games.
+- Ranked players whom League anonymizes remain anonymous.
 
-Use of unofficial local client APIs may be affected by League patches or regional rules. Use the application at your own risk.
+## Limitations
+
+- Windows x64 only.
+- League client updates can change or remove local API behavior.
+- Swap buttons are available only in queues and phases where League exposes the corresponding action.
+- Champion trades require both players and champions to satisfy League's normal eligibility rules.
+- This project is not endorsed by Riot Games.
+
+Use of unofficial local client APIs may be subject to League patch changes or regional rules. Use the application at your own risk.
 
 ## Build from source
 
-Requirements: Windows and the .NET 9 SDK.
+Requirements: Windows and the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0).
 
 ```powershell
+git clone https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel.git
+cd LeagueAutoAccept-SwapPanel
 dotnet restore ".\Leauge Auto Accept.sln"
 dotnet build ".\Leauge Auto Accept.sln" -c Release
 powershell -ExecutionPolicy Bypass -File .\scripts\publish-win-x64.ps1
 ```
 
-The publish script creates `artifacts\LeagueAutoAccept-win-x64.zip`.
+The publishing script creates `artifacts\LeagueAutoAccept-win-x64.zip`.
 
-## License
+## Credits and license
+
+- Original project: [sweetriverfish/LeagueAutoAccept](https://github.com/sweetriverfish/LeagueAutoAccept)
+- Original copyright notice and contributor history are preserved in the repository.
+- Fork additions are maintained at [moayedghamdi/LeagueAutoAccept-SwapPanel](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel).
 
 Distributed under the [MIT License](LICENSE).
