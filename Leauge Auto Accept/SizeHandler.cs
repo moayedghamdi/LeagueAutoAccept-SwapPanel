@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace Leauge_Auto_Accept
@@ -21,8 +22,20 @@ namespace Leauge_Auto_Accept
 
             // Set the console size
 #pragma warning disable CA1416 // Validate platform compatibility
-            Console.SetWindowSize(minWidth, minHeight);
+            int targetWidth = Math.Min(minWidth, Console.LargestWindowWidth);
+            int targetHeight = Math.Min(minHeight, Console.LargestWindowHeight);
+            if (Console.BufferWidth < targetWidth || Console.BufferHeight < targetHeight)
+            {
+                Console.SetBufferSize(
+                    Math.Max(Console.BufferWidth, targetWidth),
+                    Math.Max(Console.BufferHeight, targetHeight));
+            }
+            Console.SetWindowSize(targetWidth, targetHeight);
 #pragma warning restore CA1416 // Validate platform compatibility
+
+            WindowWidth = Console.WindowWidth;
+            WindowHeight = Console.WindowHeight;
+            CalculateCenter();
         }
 
         public static void SizeReader()
@@ -77,27 +90,26 @@ namespace Leauge_Auto_Accept
 
         public static void resizeBasedOnChampsCount()
         {
-            // Calculate the amount of items the current console size can have
-            int totalRows = minHeight - 2;
-            int totalItems = totalRows * minWidth / 20; // 20 is the current column size for a champion name
-
             int totalOptions = Data.champsSorted.Count + 2; // 2 calulcates "Unselected" and "None"
+            int longestChampionName = Data.champsSorted
+                .Select(champion => champion.name?.Length ?? 0)
+                .DefaultIfEmpty(16)
+                .Max();
 
-            // Check if the minimum console size too small
-            if (totalItems < totalOptions)
+            UI.columnSize = Math.Max(20, longestChampionName + 4);
+#pragma warning disable CA1416 // Validate platform compatibility
+            int availableColumns = Math.Max(1, Console.LargestWindowWidth / UI.columnSize);
+#pragma warning restore CA1416 // Validate platform compatibility
+            int columnCount = Math.Min(6, availableColumns);
+            int neededWidth = UI.columnSize * columnCount;
+            int neededHeight = (int)Math.Ceiling(totalOptions / (double)columnCount) + 2;
+
+            minWidth = Math.Max(120, neededWidth);
+            minHeight = Math.Max(30, neededHeight);
+
+            if (WindowWidth < minWidth || WindowHeight < minHeight)
             {
-                // Figure out the needed size
-                double neededHeight = totalOptions / 6; // 6 is the current amount of columns in a champions list
-                int newHeight = (int)Math.Ceiling(neededHeight) + 3;
-
-                // Set the new minimum console size
-                minHeight = newHeight;
-
-                // Resize if the current console is too small
-                if (WindowHeight < minHeight)
-                {
-                    initialize();
-                }
+                initialize();
             }
         }
     }

@@ -26,7 +26,7 @@
 | Champion swaps | Requests a champion trade when League exposes an eligible trade contract. |
 | Safe sequential requests | Processes selected teammates one at a time and stops after an accepted swap. |
 | Live status | Shows connection, champion-select, pending-request, timeout, and error states. |
-| League Classic labels | Distinguishes duplicate champion entries as Classic or Retail while preserving their correct pick/ban IDs. |
+| League Classic labels | Marks Classic champion entries while preserving the correct pick and ban IDs. |
 | Self-contained release | Includes the .NET runtime so users can extract the ZIP and run the application. |
 
 All original features remain available, including automatic ready-check acceptance, champion selection, bans, rune pages, summoner spells, lobby chat messages, and queue options.

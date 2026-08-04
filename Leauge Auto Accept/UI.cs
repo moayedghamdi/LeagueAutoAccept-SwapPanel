@@ -849,6 +849,7 @@ namespace Leauge_Auto_Accept
                 return;
             }
 
+            totalRows = Console.WindowHeight - 2;
             displayChamps();
             updateCurrentFilter();
         }
@@ -914,11 +915,11 @@ namespace Leauge_Auto_Accept
                 if (line != null)
                 {
                     lineNew = line.Remove(line.Length - 1);
-                    lineNew = lineNew.PadRight(119, ' ');
+                    lineNew = lineNew.PadRight(Console.WindowWidth - 1, ' ');
                 }
                 else
                 {
-                    lineNew = "".PadRight(119, ' ');
+                    lineNew = "".PadRight(Console.WindowWidth - 1, ' ');
                 }
                 Print.printWhenPossible(lineNew);
             }
@@ -931,6 +932,7 @@ namespace Leauge_Auto_Accept
         {
             Print.canMovePos = false;
 
+            columnSize = 20;
             totalRows = SizeHandler.WindowHeight - 2;
 
             currentWindow = "runeSelector";
@@ -1019,6 +1021,7 @@ namespace Leauge_Auto_Accept
         {
             Print.canMovePos = false;
 
+            columnSize = 20;
             totalRows = SizeHandler.WindowHeight - 2;
 
             currentWindow = "spellSelector";
