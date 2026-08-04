@@ -89,11 +89,23 @@ namespace Leauge_Auto_Accept
                     return false;
                 }
 
-                champs = ownedChampsResp.Data
+                var availableChampions = ownedChampsResp.Data
                     .Where(x => x.Name != "None")
+                    .ToList();
+                var duplicatedNames = availableChampions
+                    .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    .Where(group => group.Count() > 1)
+                    .Select(group => group.Key)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                champs = availableChampions
                     .Select(x => {
                         bool isAvailable = x.Ownership.Owned || x.Ownership.XboxGPReward || x.FreeToPlay;
-                        return new itemList() { name = x.Name, id = x.Id.ToString(), free = isAvailable };
+                        bool isClassic = x.Alias?.StartsWith("Jade_", StringComparison.OrdinalIgnoreCase) == true;
+                        string displayName = duplicatedNames.Contains(x.Name)
+                            ? $"{x.Name} ({(isClassic ? "Classic" : "Retail")})"
+                            : x.Name;
+                        return new itemList() { name = displayName, id = x.Id.ToString(), free = isAvailable };
                     })
                     .OrderBy(x => x.name)
                     .ToList();
