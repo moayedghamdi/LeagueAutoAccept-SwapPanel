@@ -27,12 +27,13 @@ namespace Leauge_Auto_Accept
             var isDebug = Debugger.IsAttached;
             if (!isDebug && parentProc.ProcessName != "conhost")
             {
-                Process.Start(new ProcessStartInfo
+                var conhostStartInfo = new ProcessStartInfo
                 {
                     FileName = "conhost",
                     WorkingDirectory = Directory.GetCurrentDirectory(),
-                    Arguments = Process.GetCurrentProcess().MainModule.FileName,
-                });
+                };
+                conhostStartInfo.ArgumentList.Add(Process.GetCurrentProcess().MainModule.FileName);
+                Process.Start(conhostStartInfo);
                 return;
             }
 

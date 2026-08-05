@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/github/license/moayedghamdi/LeagueAutoAccept-SwapPanel?style=for-the-badge)](LICENSE)
 [![Windows](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=for-the-badge&logo=windows)](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest)
 
-[**Download the latest Windows build**](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip)
+[**Download LeagueAutoAccept.exe — no installation required**](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept.exe)
 
 </div>
 
@@ -27,7 +27,7 @@
 | Safe sequential requests | Processes selected teammates one at a time and stops after an accepted swap. |
 | Live status | Shows connection, champion-select, pending-request, timeout, and error states. |
 | League Classic labels | Marks Classic champion entries while preserving the correct pick and ban IDs. |
-| Self-contained release | Includes the .NET runtime so users can extract the ZIP and run the application. |
+| Self-contained release | Download and run one executable; no .NET installation or source build is required. |
 
 All original features remain available, including automatic ready-check acceptance, champion selection, bans, rune pages, summoner spells, lobby chat messages, and queue options.
 
@@ -39,12 +39,11 @@ All original features remain available, including automatic ready-check acceptan
 
 ## Download and run
 
-1. Download [`LeagueAutoAccept-win-x64.zip`](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip).
-2. Extract the ZIP to a normal folder.
-3. Start the League of Legends client.
-4. Run `LeagueAutoAccept.exe`.
+1. Download [`LeagueAutoAccept.exe`](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept.exe).
+2. Start the League of Legends client.
+3. Run `LeagueAutoAccept.exe`.
 
-The Windows x64 release is self-contained. You do **not** need to install .NET separately.
+The Windows x64 executable is self-contained. You do **not** need to install .NET, Visual Studio, Git, or build the source. A [ZIP package](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip) containing the executable and logging configuration is also available.
 
 Windows SmartScreen may warn about an unsigned community executable. The complete source and repeatable publishing script are included in this repository so the build can be inspected or reproduced.
 
@@ -92,7 +91,7 @@ dotnet build ".\Leauge Auto Accept.sln" -c Release
 powershell -ExecutionPolicy Bypass -File .\scripts\publish-win-x64.ps1
 ```
 
-The publishing script creates `artifacts\LeagueAutoAccept-win-x64.zip`.
+The publishing script creates both `artifacts\LeagueAutoAccept.exe` and `artifacts\LeagueAutoAccept-win-x64.zip`.
 
 ## Credits and license
 

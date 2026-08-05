@@ -5,6 +5,7 @@ $projectPath = Join-Path $repositoryRoot "Leauge Auto Accept\Leauge Auto Accept.
 $artifactsPath = Join-Path $repositoryRoot "artifacts"
 $publishPath = Join-Path $artifactsPath "win-x64"
 $archivePath = Join-Path $artifactsPath "LeagueAutoAccept-win-x64.zip"
+$standalonePath = Join-Path $artifactsPath "LeagueAutoAccept.exe"
 
 if (Test-Path -LiteralPath $publishPath) {
     Remove-Item -LiteralPath $publishPath -Recurse -Force
@@ -12,6 +13,10 @@ if (Test-Path -LiteralPath $publishPath) {
 
 if (Test-Path -LiteralPath $archivePath) {
     Remove-Item -LiteralPath $archivePath -Force
+}
+
+if (Test-Path -LiteralPath $standalonePath) {
+    Remove-Item -LiteralPath $standalonePath -Force
 }
 
 New-Item -ItemType Directory -Path $publishPath -Force | Out-Null
@@ -36,5 +41,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
+Copy-Item -LiteralPath (Join-Path $publishPath "LeagueAutoAccept.exe") -Destination $standalonePath
 Compress-Archive -Path (Join-Path $publishPath "*") -DestinationPath $archivePath
+Write-Host "Created $standalonePath"
 Write-Host "Created $archivePath"
