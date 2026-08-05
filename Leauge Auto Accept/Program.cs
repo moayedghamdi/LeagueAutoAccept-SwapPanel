@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Net.Http.Headers;
 using System.Net.Http;
 using System.Reflection;
+using NLog.Config;
 
 namespace Leauge_Auto_Accept
 {
@@ -18,6 +19,8 @@ namespace Leauge_Auto_Accept
     {
         private static void Main()
         {
+            loadEmbeddedLoggingConfiguration();
+
             //force culture to be invariant for now.
             Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
 
@@ -71,6 +74,21 @@ namespace Leauge_Auto_Accept
             Task.WaitAll(tasks);
 
             Console.ReadKey();
+        }
+
+        private static void loadEmbeddedLoggingConfiguration()
+        {
+            const string resourceName = "Leauge_Auto_Accept.NLog.config";
+            Stream configStream = Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream(resourceName)
+                ?? throw new InvalidOperationException(
+                    $"Embedded logging configuration '{resourceName}' was not found.");
+            using (configStream)
+            using (var configReader = new StreamReader(configStream))
+            {
+                NLog.LogManager.Configuration =
+                    new XmlLoggingConfiguration(configReader, null);
+            }
         }
     }
 }

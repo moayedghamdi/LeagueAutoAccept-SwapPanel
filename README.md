@@ -43,7 +43,7 @@ All original features remain available, including automatic ready-check acceptan
 2. Start the League of Legends client.
 3. Run `LeagueAutoAccept.exe`.
 
-The Windows x64 executable is self-contained. You do **not** need to install .NET, Visual Studio, Git, or build the source. A [ZIP package](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip) containing the executable and logging configuration is also available.
+The Windows x64 executable is self-contained, including its logging configuration. You do **not** need to install .NET, Visual Studio, Git, or build the source. A [ZIP package](https://github.com/moayedghamdi/LeagueAutoAccept-SwapPanel/releases/latest/download/LeagueAutoAccept-win-x64.zip) containing the same standalone executable is also available.
 
 Windows SmartScreen may warn about an unsigned community executable. The complete source and repeatable publishing script are included in this repository so the build can be inspected or reproduced.
 
