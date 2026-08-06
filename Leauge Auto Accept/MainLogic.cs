@@ -57,7 +57,8 @@ namespace Leauge_Auto_Accept
                         switch (gameSession.Phase)
                         {
                             case "Lobby":
-                                Thread.Sleep(5000);
+                                SwiftplayService.ApplyConfiguredChampions();
+                                Thread.Sleep(4000);
                                 break;
                             case "Matchmaking":
                                 handleMatchmakingCancel();

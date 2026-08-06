@@ -27,9 +27,12 @@
 | Safe sequential requests | Processes selected teammates one at a time and stops after an accepted swap. |
 | Live status | Shows connection, champion-select, pending-request, timeout, and error states. |
 | League Classic labels | Marks Classic champion entries while preserving the correct pick and ban IDs. |
+| Swiftplay champion selection | Applies your primary and secondary configured champions to Swiftplay's two position slots. |
 | Self-contained release | Download and run one executable; no .NET installation or source build is required. |
 
 All original features remain available, including automatic ready-check acceptance, champion selection, bans, rune pages, summoner spells, lobby chat messages, and queue options.
+
+For Swiftplay, choose your two positions in League's lobby and configure the app's primary and secondary champions. While auto accept is enabled, the app assigns the primary champion to the first-position slot and the secondary champion to the second-position slot. Existing Swiftplay perks and summoner spells are preserved.
 
 ## Screenshot
 

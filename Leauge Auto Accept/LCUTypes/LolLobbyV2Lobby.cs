@@ -45,6 +45,15 @@ public record Invitation(
 	[property: JsonPropertyName("toSummonerName")] string ToSummonerName
 );
 
+public record SwiftplayPlayerSlot(
+	[property: JsonPropertyName("championId")] int ChampionId,
+	[property: JsonPropertyName("perks")] string Perks,
+	[property: JsonPropertyName("positionPreference")] string PositionPreference,
+	[property: JsonPropertyName("skinId")] int SkinId,
+	[property: JsonPropertyName("spell1")] int Spell1,
+	[property: JsonPropertyName("spell2")] int Spell2
+);
+
 public record LocalMember(
 	[property: JsonPropertyName("allowedChangeActivity")] bool AllowedChangeActivity,
 	[property: JsonPropertyName("allowedInviteOthers")] bool AllowedInviteOthers,
@@ -67,7 +76,7 @@ public record LocalMember(
 	[property: JsonPropertyName("isLeader")] bool IsLeader,
 	[property: JsonPropertyName("isSpectator")] bool IsSpectator,
 	[property: JsonPropertyName("memberData")] object MemberData,
-	[property: JsonPropertyName("playerSlots")] IReadOnlyList<object> PlayerSlots,
+	[property: JsonPropertyName("playerSlots")] IReadOnlyList<SwiftplayPlayerSlot> PlayerSlots,
 	[property: JsonPropertyName("puuid")] string Puuid,
 	[property: JsonPropertyName("ready")] bool Ready,
 	[property: JsonPropertyName("secondPositionPreference")] string SecondPositionPreference,
@@ -104,7 +113,7 @@ public record Member(
 	[property: JsonPropertyName("isLeader")] bool IsLeader,
 	[property: JsonPropertyName("isSpectator")] bool IsSpectator,
 	[property: JsonPropertyName("memberData")] object MemberData,
-	[property: JsonPropertyName("playerSlots")] IReadOnlyList<object> PlayerSlots,
+	[property: JsonPropertyName("playerSlots")] IReadOnlyList<SwiftplayPlayerSlot> PlayerSlots,
 	[property: JsonPropertyName("puuid")] string Puuid,
 	[property: JsonPropertyName("ready")] bool Ready,
 	[property: JsonPropertyName("secondPositionPreference")] string SecondPositionPreference,
