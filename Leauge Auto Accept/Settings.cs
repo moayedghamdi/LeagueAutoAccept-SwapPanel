@@ -18,6 +18,10 @@ namespace Leauge_Auto_Accept
         public static string[] currentBan = { "Unselected", "0" };
         public static string[] currentSpell1 = { "Unselected", "0" };
         public static string[] currentSpell2 = { "Unselected", "0" };
+        public static string[] swiftplayPrimarySpell1 = { "Unselected", "0" };
+        public static string[] swiftplayPrimarySpell2 = { "Unselected", "0" };
+        public static string[] swiftplaySecondarySpell1 = { "Unselected", "0" };
+        public static string[] swiftplaySecondarySpell2 = { "Unselected", "0" };
         public static bool bravery = false;
         public static bool banCrowdFavourite = false;
         public static string[] crowdFavouraiteChamp1 = { "Unselected", "0" };
@@ -322,15 +326,32 @@ namespace Leauge_Auto_Accept
                     name = spellsFiltered[Navigation.currentPos].name;
                     id = spellsFiltered[Navigation.currentPos].id;
                 }
-                if (UI.currentSpellSlot == 0)
+                switch (UI.currentSpellSlot)
                 {
-                    currentSpell1[0] = name;
-                    currentSpell1[1] = id;
-                }
-                else
-                {
-                    currentSpell2[0] = name;
-                    currentSpell2[1] = id;
+                    case 0:
+                        currentSpell1[0] = name;
+                        currentSpell1[1] = id;
+                        break;
+                    case 1:
+                        currentSpell2[0] = name;
+                        currentSpell2[1] = id;
+                        break;
+                    case 2:
+                        swiftplayPrimarySpell1[0] = name;
+                        swiftplayPrimarySpell1[1] = id;
+                        break;
+                    case 3:
+                        swiftplayPrimarySpell2[0] = name;
+                        swiftplayPrimarySpell2[1] = id;
+                        break;
+                    case 4:
+                        swiftplaySecondarySpell1[0] = name;
+                        swiftplaySecondarySpell1[1] = id;
+                        break;
+                    case 5:
+                        swiftplaySecondarySpell2[0] = name;
+                        swiftplaySecondarySpell2[1] = id;
+                        break;
                 }
                 if (saveSettings)
                 {
@@ -492,6 +513,14 @@ namespace Leauge_Auto_Accept
                 ",spell1Id:" + currentSpell1[1] +
                 ",spell2Name:" + currentSpell2[0] +
                 ",spell2Id:" + currentSpell2[1] +
+                ",swiftplayPrimarySpell1Name:" + swiftplayPrimarySpell1[0] +
+                ",swiftplayPrimarySpell1Id:" + swiftplayPrimarySpell1[1] +
+                ",swiftplayPrimarySpell2Name:" + swiftplayPrimarySpell2[0] +
+                ",swiftplayPrimarySpell2Id:" + swiftplayPrimarySpell2[1] +
+                ",swiftplaySecondarySpell1Name:" + swiftplaySecondarySpell1[0] +
+                ",swiftplaySecondarySpell1Id:" + swiftplaySecondarySpell1[1] +
+                ",swiftplaySecondarySpell2Name:" + swiftplaySecondarySpell2[0] +
+                ",swiftplaySecondarySpell2Id:" + swiftplaySecondarySpell2[1] +
                 ",autoAcceptOn:" + shouldAutoAcceptbeOn +
                 ",preloadData:" + preloadData +
                 ",instaLock:" + instaLock +
@@ -673,6 +702,30 @@ namespace Leauge_Auto_Accept
                             break;
                         case "spell2Id":
                             currentSpell2[1] = columns[1];
+                            break;
+                        case "swiftplayPrimarySpell1Name":
+                            swiftplayPrimarySpell1[0] = columns[1];
+                            break;
+                        case "swiftplayPrimarySpell1Id":
+                            swiftplayPrimarySpell1[1] = columns[1];
+                            break;
+                        case "swiftplayPrimarySpell2Name":
+                            swiftplayPrimarySpell2[0] = columns[1];
+                            break;
+                        case "swiftplayPrimarySpell2Id":
+                            swiftplayPrimarySpell2[1] = columns[1];
+                            break;
+                        case "swiftplaySecondarySpell1Name":
+                            swiftplaySecondarySpell1[0] = columns[1];
+                            break;
+                        case "swiftplaySecondarySpell1Id":
+                            swiftplaySecondarySpell1[1] = columns[1];
+                            break;
+                        case "swiftplaySecondarySpell2Name":
+                            swiftplaySecondarySpell2[0] = columns[1];
+                            break;
+                        case "swiftplaySecondarySpell2Id":
+                            swiftplaySecondarySpell2[1] = columns[1];
                             break;
                         case "pickStartHoverDelay":
                             pickStartHoverDelay = Int32.Parse(columns[1]);

@@ -262,6 +262,17 @@ namespace Leauge_Auto_Accept
                 case "mainScreen":
                     UI.exitMenu();
                     break;
+                case "spellSelector":
+                    if (UI.previousWindow == "swiftplaySpellsMenu")
+                    {
+                        UI.previousWindow = "";
+                        UI.swiftplaySpellsMenu();
+                    }
+                    else
+                    {
+                        UI.mainScreen();
+                    }
+                    break;
                 case "exitMenu":
                     if (LCU.isLeagueOpen)
                     {
@@ -312,6 +323,9 @@ namespace Leauge_Auto_Accept
                         UI.settingsMenuUpdateUI(currentPos);
                     }
                     break;
+                case "swiftplaySpellsMenu":
+                    swiftplaySpellsMenuNav();
+                    break;
                 case "delayMenu":
                     //Settings.delayModify(currentPos);
                     //UI.delayMenuUpdateUI(currentPos);
@@ -340,6 +354,11 @@ namespace Leauge_Auto_Accept
                         {
                             UI.previousWindow = "";
                             UI.arenaMenu();
+                        }
+                        else if (UI.previousWindow == "swiftplaySpellsMenu")
+                        {
+                            UI.previousWindow = "";
+                            UI.swiftplaySpellsMenu();
                         }
                         else
                         {
@@ -660,33 +679,50 @@ namespace Leauge_Auto_Accept
                     UI.champSelector();
                     break;
                 case 9:
+                    UI.previousWindow = "";
                     UI.currentSpellSlot = 0;
                     UI.spellSelector();
                     break;
                 case 10:
+                    UI.previousWindow = "";
                     UI.currentSpellSlot = 1;
                     UI.spellSelector();
                     break;
                 case 11:
-                    UI.chatMessagesWindow();
+                    UI.swiftplaySpellsMenu();
                     break;
                 case 12:
+                    UI.chatMessagesWindow();
+                    break;
+                case 13:
                     Settings.toggleAutoAcceptSetting();
                     UI.toggleAutoAcceptSettingUI(currentPos);
                     break;
-                case 13:
+                case 14:
                     UI.settingsMenu();
                     break;
-                case 14:
+                case 15:
                     UI.swapPanel();
                     break;
-                case 15:
+                case 16:
                     UI.arenaMenu();
                     break;
-                case 16:
+                case 17:
                     UI.infoMenu();
                     break;
             }
+        }
+
+        private static void swiftplaySpellsMenuNav()
+        {
+            if (currentPos < 0 || currentPos > 3)
+            {
+                return;
+            }
+
+            UI.previousWindow = "swiftplaySpellsMenu";
+            UI.currentSpellSlot = currentPos + 2;
+            UI.spellSelector();
         }
 
         private static void swapPanelNav()

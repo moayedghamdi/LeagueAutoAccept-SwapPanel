@@ -8,7 +8,7 @@ namespace Leauge_Auto_Accept
     internal class SizeHandler
     {
         public static int minWidth = 120;
-        public static int minHeight = 30;
+        public static int minHeight = 31;
 
         public static int WindowWidth = minWidth;
         public static int WindowHeight = minHeight;
@@ -105,7 +105,7 @@ namespace Leauge_Auto_Accept
             int neededHeight = (int)Math.Ceiling(totalOptions / (double)columnCount) + 2;
 
             minWidth = Math.Max(120, neededWidth);
-            minHeight = Math.Max(30, neededHeight);
+            minHeight = Math.Max(31, neededHeight);
 
             if (WindowWidth < minWidth || WindowHeight < minHeight)
             {

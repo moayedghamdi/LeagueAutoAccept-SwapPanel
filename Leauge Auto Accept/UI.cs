@@ -143,6 +143,9 @@ namespace Leauge_Auto_Accept
                 case "spellSelector":
                     spellSelector();
                     break;
+                case "swiftplaySpellsMenu":
+                    swiftplaySpellsMenu();
+                    break;
                 case "chatMessagesWindow":
                     chatMessagesWindow();
                     break;
@@ -201,6 +204,7 @@ namespace Leauge_Auto_Accept
                 "Select a ban",
                 "Select summoner spell 1",
                 "Select summoner spell 2",
+                "Swiftplay summoner spells",
                 "Instant chat messages",
                 "Enable auto accept"
             };
@@ -216,6 +220,7 @@ namespace Leauge_Auto_Accept
                 Settings.currentBan[0],
                 Settings.currentSpell1[0],
                 Settings.currentSpell2[0],
+                "Configure",
                 Settings.chatMessagesEnabled ? "Enabled, " + Settings.chatMessages.Count : "Disabled",
                 MainLogic.isAutoAcceptOn ? "Enabled" : "Disabled"
             };
@@ -239,6 +244,46 @@ namespace Leauge_Auto_Accept
 
             Navigation.handlePointerMovementPrint();
 
+            Print.canMovePos = true;
+        }
+
+        public static void swiftplaySpellsMenu()
+        {
+            Print.canMovePos = false;
+            Navigation.currentPos = 0;
+            Navigation.consolePosLast = 0;
+
+            currentWindow = "swiftplaySpellsMenu";
+            windowType = "normal";
+            showCursor = false;
+            topPad = SizeHandler.HeightCenter - 3;
+            leftPad = SizeHandler.WidthCenter - 25;
+            maxPos = 4;
+
+            Console.Clear();
+
+            string[] optionName = {
+                "Primary position spell 1",
+                "Primary position spell 2",
+                "Secondary position spell 1",
+                "Secondary position spell 2"
+            };
+
+            string[] optionValue = {
+                Settings.swiftplayPrimarySpell1[0],
+                Settings.swiftplayPrimarySpell2[0],
+                Settings.swiftplaySecondarySpell1[0],
+                Settings.swiftplaySecondarySpell2[0]
+            };
+
+            Print.printCentered("Swiftplay Summoner Spells", topPad - 2);
+            for (int i = 0; i < optionName.Length; i++)
+            {
+                Print.printCentered(addDotsInBetween(optionName[i], optionValue[i]), topPad + i);
+            }
+
+            Print.printCentered("Unselected spells are left unchanged in League.", topPad + maxPos + 2);
+            Navigation.handlePointerMovementPrint();
             Print.canMovePos = true;
         }
 
